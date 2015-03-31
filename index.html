@@ -7,7 +7,7 @@
 	<link rel="stylesheet" href="css/bootstrap.min.css">
 	<link rel="stylesheet" href="css/styles.css">
 </head>
-<body ng-controller="AsociacionController">
+<body>
 	<header>
 		<nav class="navbar navbar-default">
 			<div class="container-fluid">
@@ -62,9 +62,55 @@
 				<a href="#" class="list-group-item active">Reportes</a>
 			</div>
 		</section>
-		<section class="views-container col-sm-9">
-			algo 
-		</section>
+		<section ng-controller="AsociacionController" class="views-container col-sm-9">
+			<article ng-repeat="asociacion in asociaciones" class="panel panel-primary">
+				<div class="panel-heading">{{asociacion.nombre}}</div>
+				<div class="panel-body">
+					<ul class="list-group">
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Responsable</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.responsable}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Latitud</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.latitud}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Longitud</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.longitud}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Beneficiarios</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.beneficiarios}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Técnico</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.tecnico.first_name}} {{asociacion.tecnico.last_name}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Sector</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.ubicacion.sector}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Parroquia</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.ubicacion.parroquia}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Cantón</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.ubicacion.canton}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Provincia</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.ubicacion.provincia}}</span>
+  						</li>
+  						<li class="list-group-item row">
+  							<strong class="col-sm-6">Observación</strong>
+  							<span class="col-sm-6 text-right">{{asociacion.observacion}}</span>
+  						</li>
+					</ul>
+				</div>
+			</article> 
+		</section>		
 	</div>
 
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>

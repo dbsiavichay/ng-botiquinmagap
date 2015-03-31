@@ -3,10 +3,20 @@
 }
 
 .views-container{
-	background-color: purple;		
+	padding-top: 15px;
+	background-color: white;		
 }
 
 .menu-container{
 	margin: 0;
 	padding: 0;	
+}
+
+.row{
+	margin-left: 0;
+	margin-right: 0;
+}
+
+.panel-heading{
+	text-transform: uppercase;
 }
