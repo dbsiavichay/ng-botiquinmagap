@@ -1,0 +1,8 @@
+<div class="form-group">
+  	<label for="sltAsociacion" class="control-label col-md-2">Asociación</label>
+  	<div class="col-md-8">
+    	<select class="form-control" id="sltAsociacion" aria-describedby="sltAsociacionStatus">
+      		<option ng-repeat="asociacion in asociaciones" value="{{asociacion.id}}">{{asociacion.nombre}}</option>
+    	</select>    	
+  	</div>  	
+</div>

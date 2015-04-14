@@ -1,0 +1,48 @@
+<div class="row">
+	<article ng-repeat="asociacion in asociaciones" class="panel panel-primary col-xs-12 col-sm-6 col-md-4 without-padding">
+		<div class="panel-heading">{{asociacion.nombre}}</div>
+		<div class="panel-body">
+			<figure class="text-center">
+				<img class="img-responsive img-thumbnail" src="{{asociacion.map.src}}">	
+			</figure>												
+		</div>
+		<ul class="list-group">
+			<li class="list-group-item row">
+					<span class="col-xs-12 text-center">{{asociacion.ubicacion.provincia}} > {{asociacion.ubicacion.canton}} > {{asociacion.ubicacion.parroquia}} > {{asociacion.ubicacion.sector}}</span>
+					<a href="#" class="col-xs-12 btn btn-primary btn-xs">Detalle</a>
+				</li>	  					
+					<!-- <li class="list-group-item row">
+						<strong class="col-xs-12 col-sm-6">Responsable</strong>
+						<span class="col-xs-12 col-sm-6 text-right">{{asociacion.responsable}}</span>
+					</li>	  						
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Beneficiarios</strong>
+						<span class="col-sm-6 text-right">{{asociacion.beneficiarios}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Técnico</strong>
+						<span class="col-sm-6 text-right">{{asociacion.tecnico.first_name}} {{asociacion.tecnico.last_name}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Sector</strong>
+						<span class="col-sm-6 text-right">{{asociacion.ubicacion.sector}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Parroquia</strong>
+						<span class="col-sm-6 text-right">{{asociacion.ubicacion.parroquia}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Cantón</strong>
+						<span class="col-sm-6 text-right">{{asociacion.ubicacion.canton}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Provincia</strong>
+						<span class="col-sm-6 text-right">{{asociacion.ubicacion.provincia}}</span>
+					</li>
+					<li class="list-group-item row">
+						<strong class="col-sm-6">Observación</strong>
+						<span class="col-sm-6 text-right">{{asociacion.observacion}}</span>
+					</li> -->
+		</ul>
+	</article>				
+</div>
