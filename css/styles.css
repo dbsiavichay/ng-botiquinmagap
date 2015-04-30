@@ -24,3 +24,11 @@
 .without-padding{
 	padding: 0;
 }
+
+.busqueda-producto-container{
+	position: relative;
+}
+
+.busqueda-producto-lista{
+	position: absolute;
+}

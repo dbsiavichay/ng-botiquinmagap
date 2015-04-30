@@ -26,8 +26,10 @@
 			var param = $routeParams.id;
 			$scope.sessionStorage = $window.sessionStorage;
 
-			$scope.ventaActual = {};		
-			$scope.nombretest	
+			$scope.ventaActual = {};
+			$scope.detalleVentaActual = {};
+			$scope.productos;
+			$scope.busqueda;
 
 			param = parseInt(param);			
 
@@ -36,7 +38,7 @@
 				.success(function (data) {
 					$scope.ventaActual = data;					
 				});
-			}			
+			}
 
 
 			$http.get('http://localhost:8000/asociaciones/?tecnico=2')
@@ -47,6 +49,7 @@
 						element.ubicacion = JSON.parse(element.ubicacion);						
 					});
 				});		
+			
 
 			$scope.$watch("sessionStorage.getItem('cliente')", function() {
 				$scope.ventaActual.cliente = JSON.parse($scope.sessionStorage.getItem('cliente'));
@@ -55,10 +58,41 @@
 				$scope.ventaActual.cliente.nombreCompleto = nb + ' ' + ap;
 			});		
 
+			$scope.buscarProductos = function () {
+				if(!$scope.detalleVentaActual.nombreProducto){
+					$scope.productos = {};
+					return;
+				}
 
-			$scope.abrirDialog = function () {
-				console.log("Enter")
+				$http.get('http://localhost:8000/productos/?nombre='+$scope.detalleVentaActual.nombreProducto)
+					.success(function (data) {
+						$scope.productos = data;						
+					});
+			}
+
+			$scope.seleccionarProducto = function (producto) {
+				if(producto){
+					$scope.detalleVentaActual.nombreProducto = producto.nombre;
+					$scope.detalleVentaActual.valorUnitario = producto.precio_referencial;					
+					var p = $scope.detalleVentaActual.valorUnitario;
+					var c = $scope.detalleVentaActual.cantidad;
+					$scope.detalleVentaActual.valorTotal = p * c;
+					if(isNaN($scope.detalleVentaActual.valorTotal)){
+						$scope.detalleVentaActual.valorTotal = "0.00";
+					}									
+					$scope.productos = {};
+				}
 			}	
+
+
+			$scope.calcularTotal = function () {				
+				var p = $scope.detalleVentaActual.valorUnitario;
+				var c = $scope.detalleVentaActual.cantidad;
+				$scope.detalleVentaActual.valorTotal = p * c;
+				if(isNaN($scope.detalleVentaActual.valorTotal)){
+					$scope.detalleVentaActual.valorTotal = "0.00";
+				}	
+			}
 
 		}]);
 })();

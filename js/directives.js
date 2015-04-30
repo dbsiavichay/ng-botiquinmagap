@@ -16,7 +16,7 @@
 				link: function (scope, element, attributes) {					
 					scope.name = attributes.name;
 				},
-				controller: ['$scope', '$http', '$window', function ($scope, $http, $window, $templateCache, $compile) {
+				controller: ['$scope', '$http', '$window', function ($scope, $http, $window) {
 					var dataList = {};
 					var sessionStorage = $window.sessionStorage;
 					$scope.isEmpty = true;					

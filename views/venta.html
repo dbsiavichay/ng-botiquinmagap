@@ -34,7 +34,7 @@
 
 			<div class="panel panel-default">
   				<div class="panel-body">
-  					<button class="btn btn-success btn-sm">
+  					<button class="btn btn-success btn-sm" data-toggle="modal" data-target="#dlgDetalleVenta">
 						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Agregar
 					</button>
 					<hr>
@@ -64,4 +64,54 @@
 	<!-- Dialogos -->
 
 	<buscarcliente-dialog name="dlgBuscarCliente"></buscarcliente-dialog>
+	
+
+	<div class="modal fade" id="dlgDetalleVenta">
+	 	<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Nuevo detalle de venta</h4>
+				</div>
+				<div class="modal-body">					
+					<fieldset>
+						<legend>Detalle de venta</legend>
+							<div class="form-inline">
+							<div class="form-group">
+								<label class="sr-only" for="txtCantidad">Cantidad</label>
+								<input ng-model="detalleVentaActual.cantidad" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtCantidad" placeholder="Cantidad">
+							</div>
+							<div class="form-group">
+								<label class="sr-only" for="txtProducto">Producto</label>
+								<div class="busqueda-producto-container">									
+									<input ng-model="detalleVentaActual.nombreProducto" ng-keyup="buscarProductos()" type="text" class="form-control" id="txtProducto" placeholder="Producto">
+									<div ng-show="productos.length > 0" class="list-group busqueda-producto-lista">
+										<a ng-repeat="producto in productos" ng-click="seleccionarProducto(producto)" class="list-group-item">{{producto.nombre}} - {{producto.precio_referencial}}</a>
+									</div>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="sr-only" for="txtValorUnitario">Valor unitario</label>
+								<input ng-model="detalleVentaActual.valorUnitario" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtValorUnitario" placeholder="Valor unitario">
+							</div>
+							<div class="form-group">
+								<label class="sr-only" for="txtValorTotal">Valor total</label>
+								<input ng-model="detalleVentaActual.valorTotal" type="text" class="form-control" id="txtValorTotal" placeholder="Valor total" readonly>
+							</div>
+						</div>
+					</fieldset>
+					
+					<fieldset>
+						<legend>Usos</legend>
+					</fieldset>					
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+					<button ng-click="guardarCliente()" type="button" class="btn btn-primary" data-dismiss="modal">Aceptar</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </div> 
