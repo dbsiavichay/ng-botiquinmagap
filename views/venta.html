@@ -34,7 +34,7 @@
 
 			<div class="panel panel-default">
   				<div class="panel-body">
-  					<button class="btn btn-success btn-sm" data-toggle="modal" data-target="#dlgDetalleVenta">
+  					<button ng-click="agregarDetalle()" class="btn btn-success btn-sm">
 						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Agregar
 					</button>
 					<hr>
@@ -42,17 +42,24 @@
 						<table class="table table-striped table-condensed">
 							<thead>
 								<tr>
-									<th>Cantidad</th>
-									<th>Producto</th>
-									<th>Valor Unitario</th>
-									<th>Valor Total</th>
-									<th>Acciones</th>
+									<th>CANTIDAD</th>
+									<th>PRODUCTO</th>
+									<th>VALOR UNITARIO</th>
+									<th>VALOR TOTAL</th>
+									<th>ACCIONES</th>
 								</tr>
 							</thead>
 							<tbody>
-								<tr>
+								<tr ng-show="detallesVenta.length <= 0">
 									<td colspan="5">No existen registros</td>
 								</tr>
+								<tr ng-repeat="detalle in detallesVenta">
+									<td><input ng-model="detalle.cantidad" type="text"></td>
+									<td><input ng-model="detalle.producto" type="text"></td>
+									<td><input ng-model="detalle.valorUnitario" type="text"></td>
+									<td><input ng-model="detalle.valorTotal" type="text"></td>
+									<td><input type="text"></td>
+								</tr>								
 							</tbody>
 						</table>
 					</div>
@@ -78,33 +85,53 @@
 				<div class="modal-body">					
 					<fieldset>
 						<legend>Detalle de venta</legend>
-							<div class="form-inline">
+						<div class="form-horizontal">
 							<div class="form-group">
-								<label class="sr-only" for="txtCantidad">Cantidad</label>
-								<input ng-model="detalleVentaActual.cantidad" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtCantidad" placeholder="Cantidad">
+								<label class="control-label col-xs-2" for="txtCantidad">Cantidad</label>
+								<div class="col-xs-10">								
+									<input ng-model="detalleVentaActual.cantidad" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtCantidad" placeholder="Ej. 1.12">
+								</div>
 							</div>
 							<div class="form-group">
-								<label class="sr-only" for="txtProducto">Producto</label>
-								<div class="busqueda-producto-container">									
-									<input ng-model="detalleVentaActual.nombreProducto" ng-keyup="buscarProductos()" type="text" class="form-control" id="txtProducto" placeholder="Producto">
+								<label class="control-label col-xs-2" for="txtProducto">Producto</label>
+								<div class="busqueda-producto-container col-xs-10">									
+									<input ng-model="detalleVentaActual.nombreProducto" ng-keyup="buscarProductos()" type="text" class="form-control" id="txtProducto" placeholder="Ej. cimalgex">
 									<div ng-show="productos.length > 0" class="list-group busqueda-producto-lista">
 										<a ng-repeat="producto in productos" ng-click="seleccionarProducto(producto)" class="list-group-item">{{producto.nombre}} - {{producto.precio_referencial}}</a>
 									</div>
 								</div>
 							</div>
 							<div class="form-group">
-								<label class="sr-only" for="txtValorUnitario">Valor unitario</label>
-								<input ng-model="detalleVentaActual.valorUnitario" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtValorUnitario" placeholder="Valor unitario">
+								<label class="control-label col-xs-2" for="txtValorUnitario">Valor unitario</label>
+								<div class="col-xs-10">									
+									<input ng-model="detalleVentaActual.valorUnitario" ng-keyup="calcularTotal()" type="text" class="form-control" id="txtValorUnitario" placeholder="Precio del producto">
+								</div>
 							</div>
 							<div class="form-group">
-								<label class="sr-only" for="txtValorTotal">Valor total</label>
-								<input ng-model="detalleVentaActual.valorTotal" type="text" class="form-control" id="txtValorTotal" placeholder="Valor total" readonly>
+								<label class="control-label col-xs-2" for="txtValorTotal">Valor total</label>
+								<div class="col-xs-10">									
+									<input ng-model="detalleVentaActual.valorTotal" type="text" class="form-control col-sm-10" id="txtValorTotal" readonly>
+								</div>
 							</div>
 						</div>
 					</fieldset>
 					
 					<fieldset>
 						<legend>Usos</legend>
+						<div class="row">
+							<strong class="col-xs-2 text-center">Cantidad</strong>
+							<strong class="col-xs-5 text-center">Enfermedad</strong>
+							<strong class="col-xs-5 text-center">Especie</strong>							
+						</div>
+						<div class="row">
+							<input type="text" class="col-xs-2" placeholder="Ej. 1.12">
+							<select class="col-xs-5">
+								<option>Seleccionar</option>
+							</select>
+							<select class="col-xs-5">
+								<option>Seleccionar</option>
+							</select>
+						</div>
 					</fieldset>					
 				</div>
 				<div class="modal-footer">

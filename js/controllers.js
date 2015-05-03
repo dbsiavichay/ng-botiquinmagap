@@ -27,9 +27,11 @@
 			$scope.sessionStorage = $window.sessionStorage;
 
 			$scope.ventaActual = {};
+			$scope.detallesVenta = [];
 			$scope.detalleVentaActual = {};
 			$scope.productos;
-			$scope.busqueda;
+			$scope.enfermedades;
+			$scope.especies;
 
 			param = parseInt(param);			
 
@@ -48,7 +50,17 @@
 						element.tecnico = JSON.parse(element.tecnico);
 						element.ubicacion = JSON.parse(element.ubicacion);						
 					});
-				});		
+				});
+
+			$http.get('http://localhost:8000/enfermedades/')
+				.success(function (data) {
+					$scope.enfermedades = data;
+				});
+
+			$http.get('http://localhost:8000/especies/')
+				.success(function (data) {
+					$scope.especies = data;
+				});
 			
 
 			$scope.$watch("sessionStorage.getItem('cliente')", function() {
@@ -57,6 +69,16 @@
 				var ap = $scope.ventaActual.cliente.apellido;
 				$scope.ventaActual.cliente.nombreCompleto = nb + ' ' + ap;
 			});		
+
+			$scope.agregarDetalle = function () {
+				var detalle = {
+					cantidad: 1.0,
+					producto: '',
+					valorUnitario: 0.0,
+					valorTotal: 0.0
+				};
+				$scope.detallesVenta.push(detalle);
+			}
 
 			$scope.buscarProductos = function () {
 				if(!$scope.detalleVentaActual.nombreProducto){
@@ -93,6 +115,5 @@
 					$scope.detalleVentaActual.valorTotal = "0.00";
 				}	
 			}
-
 		}]);
 })();
