@@ -72,21 +72,21 @@
 
 			$scope.agregarDetalle = function () {
 				var detalle = {
-					cantidad: 1.0,
+					cantidad: '1.0',
 					producto: '',
-					valorUnitario: 0.0,
-					valorTotal: 0.0
+					valorUnitario: '0.0',
+					valorTotal: '0.0'
 				};
-				$scope.detallesVenta.push(detalle);
+				$scope.detallesVenta.unshift(detalle);
 			}
 
-			$scope.buscarProductos = function () {
-				if(!$scope.detalleVentaActual.nombreProducto){
+			$scope.buscarProductos = function (producto) {
+				if(!producto){
 					$scope.productos = {};
 					return;
 				}
 
-				$http.get('http://localhost:8000/productos/?nombre='+$scope.detalleVentaActual.nombreProducto)
+				$http.get('http://localhost:8000/productos/?nombre='+producto)
 					.success(function (data) {
 						$scope.productos = data;						
 					});
