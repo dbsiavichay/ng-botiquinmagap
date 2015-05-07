@@ -55,23 +55,23 @@
 								</tr>
 								<tr ng-repeat="detalle in detallesVenta">
 									<td class="col-xs-1">
-										<input ng-model="detalle.cantidad" ng-keyup="calcularTotal()" type="text" class="form-control input-sm" id="txtCantidad" placeholder="Ej. 1.12">
+										<input ng-model="detalle.cantidad" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtCantidad" placeholder="Ej. 1.12">
 									</td>
 									<td class="col-xs-5">
 										<div class="input-group input-group-sm">    					  
-      										<input type="text" class="form-control" placeholder="Buscar producto" value="{{detalle.producto}}" readonly>
+      										<input type="text" class="form-control" placeholder="Buscar producto" value="{{detalle.producto.nombre}}" readonly>
       										<span class="input-group-btn">
-		      									<button  class="btn btn-success" title="Buscar" data-toggle="modal" data-target="#dlgBuscarProducto">
+		      									<button ng-click="setIndex($index)" class="btn btn-success" title="Buscar" data-toggle="modal" data-target="#dlgBuscarProducto">
 													<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
 												</button>
 			      							</span>
 			    						</div>
 									</td>
 									<td class="col-xs-2">
-										<input ng-model="detalle.valorUnitario" ng-keyup="calcularTotal()" type="text" class="form-control input-sm" id="txtValorUnitario" placeholder="Precio del producto">
+										<input ng-model="detalle.valorUnitario" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtValorUnitario" placeholder="Precio del producto">
 									</td>
 									<td class="col-xs-2">
-										<input ng-model="detalle.valorTotal" type="text" class="form-control input-sm" id="txtValorTotal" readonly>
+										<input type="text" class="form-control input-sm" id="txtValorTotal" value="{{detalle.valorTotal}}" readonly>
 									</td>
 									<td class="col-xs-2">
 										<a href="#" class="btn btn-primary btn-sm" title="Ver">

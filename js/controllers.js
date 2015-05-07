@@ -24,11 +24,11 @@
 		}])
 		.controller('VentaController', ['$scope', '$http', '$routeParams', '$window', function ($scope, $http, $routeParams, $window) {
 			var param = $routeParams.id;
+			var index;
 			$scope.sessionStorage = $window.sessionStorage;
 
 			$scope.ventaActual = {};
-			$scope.detallesVenta = [];
-			$scope.detalleVentaActual = {};
+			$scope.detallesVenta = [];			
 			$scope.productos;
 			$scope.enfermedades;
 			$scope.especies;
@@ -70,6 +70,13 @@
 				$scope.ventaActual.cliente.nombreCompleto = nb + ' ' + ap;
 			});		
 
+			$scope.$watch("sessionStorage.getItem('producto')", function() {
+				var p = JSON.parse($scope.sessionStorage.getItem('producto'));
+				$scope.detallesVenta[index].producto = p;
+				$scope.detallesVenta[index].valorUnitario = p.precio_referencial;
+				$scope.calcularTotal(index);
+			});	
+
 			$scope.agregarDetalle = function () {
 				var detalle = {
 					cantidad: '1.0',
@@ -80,39 +87,17 @@
 				$scope.detallesVenta.unshift(detalle);
 			}
 
-			$scope.buscarProductos = function (producto) {
-				if(!producto){
-					$scope.productos = {};
-					return;
-				}
 
-				$http.get('http://localhost:8000/productos/?nombre='+producto)
-					.success(function (data) {
-						$scope.productos = data;						
-					});
-			}
+			$scope.setIndex = function (i) {
+				index = i;
+			}			
 
-			$scope.seleccionarProducto = function (producto) {
-				if(producto){
-					$scope.detalleVentaActual.nombreProducto = producto.nombre;
-					$scope.detalleVentaActual.valorUnitario = producto.precio_referencial;					
-					var p = $scope.detalleVentaActual.valorUnitario;
-					var c = $scope.detalleVentaActual.cantidad;
-					$scope.detalleVentaActual.valorTotal = p * c;
-					if(isNaN($scope.detalleVentaActual.valorTotal)){
-						$scope.detalleVentaActual.valorTotal = "0.00";
-					}									
-					$scope.productos = {};
-				}
-			}	
-
-
-			$scope.calcularTotal = function () {				
-				var p = $scope.detalleVentaActual.valorUnitario;
-				var c = $scope.detalleVentaActual.cantidad;
-				$scope.detalleVentaActual.valorTotal = p * c;
-				if(isNaN($scope.detalleVentaActual.valorTotal)){
-					$scope.detalleVentaActual.valorTotal = "0.00";
+			$scope.calcularTotal = function (i) {				
+				var p = $scope.detallesVenta[i].valorUnitario;
+				var c = $scope.detallesVenta[i].cantidad;
+				$scope.detallesVenta[i].valorTotal = p * c;
+				if(isNaN($scope.detallesVenta[i].valorTotal)){
+					$scope.detallesVenta[i].valorTotal = "0.00";
 				}	
 			}
 		}]);
