@@ -72,9 +72,17 @@
 
 			$scope.$watch("sessionStorage.getItem('producto')", function() {
 				var p = JSON.parse($scope.sessionStorage.getItem('producto'));
-				$scope.detallesVenta[index].producto = p;
-				$scope.detallesVenta[index].valorUnitario = p.precio_referencial;
-				$scope.calcularTotal(index);
+				$scope.mensaje = '';
+				$scope.detallesVenta.some(function (element, indice, array) {					
+					if(element.producto.nombre ===  p.nombre){						
+						$scope.mensaje = 'El producto seleccionado ya se encuentra en la lista';						
+					}
+				});
+				if(!$scope.mensaje){
+					$scope.detallesVenta[index].producto = p;
+					$scope.detallesVenta[index].valorUnitario = p.precio_referencial;
+					$scope.calcularTotal(index);
+				}				
 			});	
 
 			$scope.agregarDetalle = function () {
@@ -82,14 +90,53 @@
 					cantidad: '1.0',
 					producto: '',
 					valorUnitario: '0.0',
-					valorTotal: '0.0'
+					valorTotal: '',
+					actual: true
 				};
+
+				if($scope.detallesVenta.length>0){
+					$scope.mensaje = '';					
+					var prod = $scope.detallesVenta[0].producto;
+					var valt = $scope.detallesVenta[0].valorTotal;
+					if(!prod || !valt){
+						$scope.mensaje = 'Debe llenar todos los campos necesarios';
+						return;
+					}
+				}				
+
+				$scope.detallesVenta.forEach(function (element, index, array) {
+					element.actual = false;
+				});
+
 				$scope.detallesVenta.unshift(detalle);
 			}
 
+			$scope.editarDetalle = function (indice) {
+				var i = -1;
+				$scope.mensaje = '';
+				$scope.detallesVenta.forEach(function (element, index, array) {
+					element.actual = false;
+					if(!element.producto || !element.valorTotal){
+						i = index;
+					}
+				});				
 
-			$scope.setIndex = function (i) {
-				index = i;
+				$scope.detallesVenta[indice].actual = true;
+
+				if(i>=0){
+					$scope.detallesVenta.splice(i,1);
+				}
+			}
+
+			$scope.eliminarDetalle = function (indice) {				
+				$scope.detallesVenta.forEach(function (element, index, array) {
+					element.actual = false;					
+				});	
+				$scope.detallesVenta.splice(indice, 1);
+			}
+
+			$scope.setIndex = function (indice) {
+				index = indice;
 			}			
 
 			$scope.calcularTotal = function (i) {				
