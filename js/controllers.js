@@ -23,12 +23,17 @@
 				});
 		}])
 		.controller('VentaController', ['$scope', '$http', '$routeParams', '$window', function ($scope, $http, $routeParams, $window) {
-			var param = $routeParams.id;
-			var index;
+			var param = $routeParams.id;			
 			$scope.sessionStorage = $window.sessionStorage;
 
-			$scope.ventaActual = {};
-			$scope.detallesVenta = [];			
+			$scope.venta = {};
+			$scope.detalles = [];
+			$scope.detalleActual = {};
+			$scope.usoActual = {
+				cantidad: '',
+				enfermedad: '',
+				especie: ''							
+			};					
 			$scope.productos;
 			$scope.enfermedades;
 			$scope.especies;
@@ -38,7 +43,7 @@
 			if(!isNaN(param)){
 				$http.get('http://localhost:8000/ventas/'+param)
 				.success(function (data) {
-					$scope.ventaActual = data;					
+					$scope.venta = data;					
 				});
 			}
 
@@ -64,88 +69,153 @@
 			
 
 			$scope.$watch("sessionStorage.getItem('cliente')", function() {
-				$scope.ventaActual.cliente = JSON.parse($scope.sessionStorage.getItem('cliente'));
-				var nb = $scope.ventaActual.cliente.nombre;
-				var ap = $scope.ventaActual.cliente.apellido;
-				$scope.ventaActual.cliente.nombreCompleto = nb + ' ' + ap;
+				$scope.venta.cliente = JSON.parse($scope.sessionStorage.getItem('cliente'));
+				var nb = $scope.venta.cliente.nombre;
+				var ap = $scope.venta.cliente.apellido;
+				$scope.venta.cliente.nombreCompleto = nb + ' ' + ap;
 			});		
 
 			$scope.$watch("sessionStorage.getItem('producto')", function() {
 				var p = JSON.parse($scope.sessionStorage.getItem('producto'));
 				$scope.mensaje = '';
-				$scope.detallesVenta.some(function (element, indice, array) {					
+				$scope.detalles.some(function (element, indice, array) {					
 					if(element.producto.nombre ===  p.nombre){						
 						$scope.mensaje = 'El producto seleccionado ya se encuentra en la lista';						
 					}
 				});
 				if(!$scope.mensaje){
-					$scope.detallesVenta[index].producto = p;
-					$scope.detallesVenta[index].valorUnitario = p.precio_referencial;
-					$scope.calcularTotal(index);
+					var i = $scope.detalles.indexOf($scope.detalleActual);
+					$scope.detalles[i].producto = p;
+					$scope.detalles[i].valorUnitario = p.precio_referencial;
+					$scope.calcularTotal(i);
 				}				
 			});	
 
+			$scope.guardarVenta = function () {
+				console.log($scope.venta);
+			}
+
 			$scope.agregarDetalle = function () {
 				var detalle = {
-					cantidad: '1.0',
+					cantidad: '1',
 					producto: '',
-					valorUnitario: '0.0',
+					valorUnitario: '0',
 					valorTotal: '',
-					actual: true
+					usos: [],
+					esActual: true
 				};
 
-				if($scope.detallesVenta.length>0){
+				if($scope.detalles.length>0){
 					$scope.mensaje = '';					
-					var prod = $scope.detallesVenta[0].producto;
-					var valt = $scope.detallesVenta[0].valorTotal;
+					var prod = $scope.detalles[0].producto;
+					var valt = $scope.detalles[0].valorTotal;
 					if(!prod || !valt){
 						$scope.mensaje = 'Debe llenar todos los campos necesarios';
 						return;
 					}
 				}				
 
-				$scope.detallesVenta.forEach(function (element, index, array) {
-					element.actual = false;
+				$scope.detalles.forEach(function (element, index, array) {
+					element.esActual = false;
 				});
 
-				$scope.detallesVenta.unshift(detalle);
+				$scope.detalles.unshift(detalle);
 			}
 
 			$scope.editarDetalle = function (indice) {
 				var i = -1;
 				$scope.mensaje = '';
-				$scope.detallesVenta.forEach(function (element, index, array) {
-					element.actual = false;
+				$scope.detalles.forEach(function (element, index, array) {
+					element.esActual = false;
 					if(!element.producto || !element.valorTotal){
 						i = index;
 					}
 				});				
 
-				$scope.detallesVenta[indice].actual = true;
+				$scope.detalles[indice].esActual = true;
 
 				if(i>=0){
-					$scope.detallesVenta.splice(i,1);
+					$scope.detalles.splice(i,1);
 				}
 			}
 
 			$scope.eliminarDetalle = function (indice) {				
-				$scope.detallesVenta.forEach(function (element, index, array) {
-					element.actual = false;					
+				$scope.detalles.forEach(function (element, index, array) {
+					element.esActual = false;					
 				});	
-				$scope.detallesVenta.splice(indice, 1);
+				$scope.detalles.splice(indice, 1);
 			}
 
-			$scope.setIndex = function (indice) {
-				index = indice;
+			$scope.setDetalleActual = function (detalle) {
+				$scope.detalleActual = detalle;
+				$scope.usoActual.cantidad = detalle.cantidad;			
 			}			
 
 			$scope.calcularTotal = function (i) {				
-				var p = $scope.detallesVenta[i].valorUnitario;
-				var c = $scope.detallesVenta[i].cantidad;
-				$scope.detallesVenta[i].valorTotal = p * c;
-				if(isNaN($scope.detallesVenta[i].valorTotal)){
-					$scope.detallesVenta[i].valorTotal = "0.00";
+				var p = $scope.detalles[i].valorUnitario;
+				var c = $scope.detalles[i].cantidad;
+				$scope.detalles[i].valorTotal = p * c;
+				if(isNaN($scope.detalles[i].valorTotal)){
+					$scope.detalles[i].valorTotal = "0.00";
 				}	
 			}
+
+
+			$scope.agregarUso = function () {				
+				var error = false;	
+
+				$scope.detalleActual.usos.forEach(function (uso) {
+					uso.esActual = false;					
+				});				
+
+				for(propiedad in $scope.usoActual){						
+					if($scope.usoActual[propiedad]){
+						$('#'+ propiedad +'Usos').removeClass('has-error');						
+					}else{
+						$('#'+ propiedad +'Usos').addClass('has-error');	
+						error = true;				
+					}
+				}	
+
+				$scope.usoActual.error = error;
+				
+				if(error){
+					$scope.usoActual.mensajeError = 'Todos lo campos son necesarios.';
+					return;
+				} 				
+
+				for (var i in $scope.detalleActual.usos) {
+					var uso = $scope.detalleActual.usos[i];						
+					if(uso.enfermedad.nombre===$scope.usoActual.enfermedad.nombre
+						&& uso.especie.nombre===$scope.usoActual.especie.nombre){
+						$scope.usoActual.error = true;
+						$scope.usoActual.mensajeError = 'Los datos seleccionados ya se encuentran en la lista.';
+						return;
+					}
+				}
+
+				
+				$scope.detalleActual.usos.push($scope.usoActual);				
+				$scope.usoActual = {
+					cantidad: '',
+					enfermedad: '',
+					especie: ''
+				};
+			}
+
+			$scope.editarUso = function (indice) {
+				$scope.detalleActual.usos.forEach(function (uso) {
+					uso.esActual = false;
+				});
+
+				$scope.detalleActual.usos[indice].esActual = true;
+			}
+
+			$scope.eliminarUso = function (indice) {
+				$scope.detalleActual.usos.forEach(function (uso) {
+					uso.esActual = false;					
+				});	
+				$scope.detalleActual.usos.splice(indice, 1);
+			}		
 		}]);
 })();
