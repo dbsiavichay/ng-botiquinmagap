@@ -1,0 +1,46 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title" id="myModalLabel">Búsqueda de clientes</h4>
+</div>
+<div class="modal-body">
+	<div class="form-inline">
+		<div class="form-group">
+			<label class="sr-only">Palabra clave</label>
+			<input ng-keyup="filtrarClientes($event)" ng-model="keyword" type="text" class="form-control" placeholder="Palabra clave">
+		</div>  						
+		<button ng-click="filtrarClientes()" class="btn btn-success">Buscar</button>
+	</div>
+	<hr>
+
+	<div ng-show="error" class="alert alert-danger" role="alert">						
+		<strong>Error!</strong> {{mensajeError}}
+	</div>
+
+	<div class="table-responsive">
+		<table class="table table-striped table-condensed table-hover">
+			<thead>
+				<tr>
+					<th>Cédula</th>
+					<th>Nombres</th>
+					<th>Apellidos</th>									
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td ng-show="isEmpty" colspan="3">No existen registros</td>
+				</tr>
+				<tr ng-repeat="cliente in clientes" ng-class="{success: clienteSeleccionado === cliente}"  ng-click="seleccionarCliente(cliente)">
+					<td>{{cliente.cedula}}</td>
+					<td>{{cliente.nombre}}</td>
+					<td>{{cliente.apellido}}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">
+	<button ng-click="cancelar()" type="button" class="btn btn-default">Cancelar</button>
+	<button ng-click="ok()" type="button" class="btn btn-primary">Aceptar</button>
+</div>

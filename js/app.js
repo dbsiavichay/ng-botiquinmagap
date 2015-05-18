@@ -2,7 +2,9 @@
 	var app = angular.module('botiquin', [
 		'ngRoute',
 		'botiquin.controllers',
-		'botiquin.directives'
+		'botiquin.directives',
+		'botiquin.services',
+		'ui.bootstrap',		
 		]);
 
 	app.config(['$routeProvider', function ($routeProvider) {

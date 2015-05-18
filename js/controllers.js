@@ -22,80 +22,68 @@
 					$scope.ventas = data;										
 				});
 		}])
-		.controller('VentaController', ['$scope', '$http', '$routeParams', '$window', function ($scope, $http, $routeParams, $window) {
-			var param = $routeParams.id;			
-			$scope.sessionStorage = $window.sessionStorage;
+		.controller('VentaController', ['$scope', '$modal', '$routeParams','ventaService', 'asociacionService', function ($scope, $modal, $routeParams, ventaService, asociacionService) {
+			var idVenta = parseInt($routeParams.id);							
 
-			$scope.venta = {};
+			//Declaracion de variables
+			$scope.error = false;
+			$scope.mensajeError = '';
+			$scope.asociaciones = [];
+			$scope.venta = {};					
 			$scope.detalles = [];
-			$scope.detalleActual = {};
-			$scope.usoActual = {
-				cantidad: '',
-				enfermedad: '',
-				especie: ''							
-			};					
-			$scope.productos;
-			$scope.enfermedades;
-			$scope.especies;
 
-			param = parseInt(param);			
-
-			if(!isNaN(param)){
-				$http.get('http://localhost:8000/ventas/'+param)
-				.success(function (data) {
-					$scope.venta = data;					
-				});
+			//Acciones constructoras
+			if(!isNaN(idVenta)){
+				ventaService.get(idVenta)
+					.then(function (data) {
+						$scope.venta = data;					
+					});
 			}
 
-
-			$http.get('http://localhost:8000/asociaciones/?tecnico=2')
-				.success(function (data) {
-					$scope.asociaciones = data;
-					$scope.asociaciones.every(function(element, index, array){
-						element.tecnico = JSON.parse(element.tecnico);
-						element.ubicacion = JSON.parse(element.ubicacion);						
-					});
-				});
-
-			$http.get('http://localhost:8000/enfermedades/')
-				.success(function (data) {
-					$scope.enfermedades = data;
-				});
-
-			$http.get('http://localhost:8000/especies/')
-				.success(function (data) {
-					$scope.especies = data;
+			asociacionService.getPorTecnico(2)
+				.then(function (data) {
+					$scope.asociaciones = data;					
 				});
 			
+			//Funciones
+			$scope.buscarCliente = function () {				
+				$modal.open({					
+					templateUrl: 'partials/cliente-dialog.html',
+					controller: 'ClienteController',
+				}).result.then(function (data) {
+					$scope.venta.cliente = data;
+				});				
+			}
 
-			$scope.$watch("sessionStorage.getItem('cliente')", function() {
-				$scope.venta.cliente = JSON.parse($scope.sessionStorage.getItem('cliente'));
-				var nb = $scope.venta.cliente.nombre;
-				var ap = $scope.venta.cliente.apellido;
-				$scope.venta.cliente.nombreCompleto = nb + ' ' + ap;
-			});		
+			$scope.buscarProducto = function ($index) {
+				$modal.open({
+					templateUrl: 'partials/producto-dialog.html',
+					controller: 'ProductoController',
+					size: 'lg'
+				}).result.then(function (data) {
+					$scope.error = false;
 
-			$scope.$watch("sessionStorage.getItem('producto')", function() {
-				var p = JSON.parse($scope.sessionStorage.getItem('producto'));
-				$scope.mensaje = '';
-				$scope.detalles.some(function (element, indice, array) {					
-					if(element.producto.nombre ===  p.nombre){						
-						$scope.mensaje = 'El producto seleccionado ya se encuentra en la lista';						
-					}
+					for(var i in $scope.detalles){
+						if($scope.detalles[i].producto.id === data.id){
+							$scope.error = true;
+							$scope.mensajeError = 'El producto seleccionado ya se encuentra en la lista';	
+							return;
+						}
+					}					
+
+					$scope.detalles[$index].producto = data;
+					$scope.detalles[$index].valorUnitario = data.precio_referencial;
+					$scope.calcularTotal($index);
 				});
-				if(!$scope.mensaje){
-					var i = $scope.detalles.indexOf($scope.detalleActual);
-					$scope.detalles[i].producto = p;
-					$scope.detalles[i].valorUnitario = p.precio_referencial;
-					$scope.calcularTotal(i);
-				}				
-			});	
+			}		
 
 			$scope.guardarVenta = function () {
 				console.log($scope.venta);
 			}
 
 			$scope.agregarDetalle = function () {
+				$scope.error = false;
+
 				var detalle = {
 					cantidad: '1',
 					producto: '',
@@ -105,117 +93,290 @@
 					esActual: true
 				};
 
-				if($scope.detalles.length>0){
-					$scope.mensaje = '';					
+				if($scope.detalles.length > 0){
 					var prod = $scope.detalles[0].producto;
 					var valt = $scope.detalles[0].valorTotal;
 					if(!prod || !valt){
-						$scope.mensaje = 'Debe llenar todos los campos necesarios';
+						$scope.error = true;
+						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
 						return;
 					}
-				}				
+				}
 
-				$scope.detalles.forEach(function (element, index, array) {
+				$scope.detalles.forEach(function (element) {
 					element.esActual = false;
 				});
 
 				$scope.detalles.unshift(detalle);
 			}
 
-			$scope.editarDetalle = function (indice) {
-				var i = -1;
-				$scope.mensaje = '';
-				$scope.detalles.forEach(function (element, index, array) {
-					element.esActual = false;
-					if(!element.producto || !element.valorTotal){
-						i = index;
+			$scope.editarDetalle = function ($index) {				
+				$scope.error = false;
+
+				for(var i=0; i < $scope.detalles.length; i++){
+					$scope.detalles[i].esActual = false;
+					if((!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal) && $index != i){
+						$scope.detalles.splice(i,1);
+						if(i < $index) $index = $index -1;
+						i = i-1;
 					}
-				});				
-
-				$scope.detalles[indice].esActual = true;
-
-				if(i>=0){
-					$scope.detalles.splice(i,1);
 				}
+							
+				$scope.detalles[$index].esActual = true;
 			}
 
-			$scope.eliminarDetalle = function (indice) {				
-				$scope.detalles.forEach(function (element, index, array) {
-					element.esActual = false;					
-				});	
-				$scope.detalles.splice(indice, 1);
-			}
+			$scope.eliminarDetalle = function ($index) {	
+				$scope.error = false;
 
-			$scope.setDetalleActual = function (detalle) {
-				$scope.detalleActual = detalle;
-				$scope.usoActual.cantidad = detalle.cantidad;			
-			}			
+				for(var i=0; i < $scope.detalles.length; i++){
+					$scope.detalles[i].esActual = false;
+					if(!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal){
+						$scope.detalles.splice(i,1);
+						if(i < $index) $index = $index -1;
+						i = i-1;
+					}
+				}				
+				$scope.detalles.splice($index, 1);
+			}		
 
-			$scope.calcularTotal = function (i) {				
-				var p = $scope.detalles[i].valorUnitario;
-				var c = $scope.detalles[i].cantidad;
-				$scope.detalles[i].valorTotal = p * c;
-				if(isNaN($scope.detalles[i].valorTotal)){
-					$scope.detalles[i].valorTotal = "0.00";
+			$scope.calcularTotal = function ($index) {											
+				var p = $scope.detalles[$index].valorUnitario;
+				var c = $scope.detalles[$index].cantidad;
+				$scope.detalles[$index].valorTotal = p * c;
+				if(isNaN($scope.detalles[$index].valorTotal)){
+					$scope.detalles[$index].valorTotal = "0.00";
 				}	
 			}
 
+			$scope.buscarUsos = function ($index) {
+				$modal.open({
+					templateUrl: 'partials/uso-dialog.html',
+					controller: 'UsoController',
+					resolve: {
+						data: function () {
+							return $scope.detalles[$index];
+						}
+					}					
+				}).result.then(function (data) {
+					$scope.detalles[$index].usos = data;
+				});
+			}					
+		}])
+		.controller('ClienteController', ['$scope', '$modalInstance', 'clienteService', function ($scope, $modalInstance, clienteService) {
+			var dataList = {};
+			$scope.error = false;
+			$scope.mensajeError = '';
+			$scope.empty = true;	
+
+			clienteService.getTodos()
+				.then(function (data) {
+					dataList = data;
+					$scope.clientes = data;					
+					if(data.length>0){
+						$scope.empty = false;
+					}
+				});
+
+			var contains = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+			};
+
+			var startsWith = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) === 0;
+			};		
+
+			var filter = function (){
+				$scope.empty = true;				
+				$scope.clientes = dataList.filter(function (obj) {
+					if(startsWith(obj.cedula, $scope.keyword) || contains(obj.nombre, $scope.keyword) || contains(obj.apellido, $scope.keyword)) {
+						return obj;
+					}
+				});
+
+				if($scope.clientes.length > 0){
+					$scope.empty = false;
+				}
+			}			
+						
+			$scope.filtrarClientes = function (event) {						
+				if(!event){
+					filter();							
+				}else if(event.keyCode === 13){
+					filter();
+				}						
+			};
+
+			$scope.seleccionarCliente = function (cliente) {
+				$scope.clienteSeleccionado = cliente;
+			}
+
+			$scope.ok = function () {
+				if(!$scope.clienteSeleccionado){
+					$scope.error = true;
+					$scope.mensajeError = 'No ha seleccionado ningun item.';
+					return;
+				}
+				$modalInstance.close($scope.clienteSeleccionado);
+			}	
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}		
+		}])
+		.controller('ProductoController', ['$scope', '$modalInstance', 'productoService', function ($scope, $modalInstance, productoService) {
+			var dataList = {};
+			$scope.productos = [];					
+			$scope.error = false;
+			$scope.mensajeError = '';
+			$scope.empty = true;
+
+			var contains = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+			};
+
+			var startsWith = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) === 0;
+			};		
+
+			var filter = function (){
+				$scope.empty = true;
+				$scope.productos = dataList.filter(function (obj) {
+					if(contains(obj.nombre, $scope.keyword) || contains(obj.compuesto, $scope.keyword) 
+						|| contains(obj.presentacion, $scope.keyword) || contains(obj.registro_sanitario, $scope.keyword)) {
+						return obj;
+					}
+				});
+
+				if($scope.productos.length > 0){
+					$scope.empty = false;
+				}
+			}			
+						
+
+			productoService.getTodos()
+				.then(function (data) {
+					dataList = data;
+					$scope.productos = data;
+					if(data.length>0){
+						$scope.empty = false;
+					}
+				});					
+
+
+			$scope.filtrarProductos = function (event) {						
+				if(!event){
+					filter();							
+				}else if(event.keyCode === 13){
+					filter();
+				}						
+			};
+
+			$scope.seleccionarProducto = function (producto) {
+				$scope.productoSeleccionado = producto;
+			}
+
+			$scope.ok = function () {				
+				if(!$scope.productoSeleccionado){
+					$scope.error = true;
+					$scope.mensajeError = 'No ha seleccionado ningun item.';
+					return;
+				}
+				$modalInstance.close($scope.productoSeleccionado);
+			}
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}	
+		}])
+		.controller('UsoController', ['$scope', '$modalInstance', 'enfermedadService', 'especieService', 'data', function ($scope, $modalInstance, enfermedadService, especieService, data) {
+			$scope.detalle = data;
+			$scope.uso = {
+				cantidad: $scope.detalle.cantidad,
+				enfermedad: '',
+				especie: ''
+			};
+			$scope.usos = [];
+			$scope.enfermedades = [];
+			$scope.especies = [];	
+			$scope.error = false;
+			$scope.mensajeError = '';
+
+			enfermedadService.getTodos()
+				.then(function (data) {
+					$scope.enfermedades = data;
+				});
+
+			especieService.getTodos()
+				.then(function (data) {
+					$scope.especies = data;
+				});
 
 			$scope.agregarUso = function () {				
-				var error = false;	
+				$scope.error = false;	
 
-				$scope.detalleActual.usos.forEach(function (uso) {
+				$scope.usos.forEach(function (uso) {
 					uso.esActual = false;					
 				});				
 
-				for(propiedad in $scope.usoActual){						
-					if($scope.usoActual[propiedad]){
+				for(propiedad in $scope.uso){						
+					if($scope.uso[propiedad]){
 						$('#'+ propiedad +'Usos').removeClass('has-error');						
 					}else{
 						$('#'+ propiedad +'Usos').addClass('has-error');	
-						error = true;				
+						$scope.error = true;										
 					}
-				}	
-
-				$scope.usoActual.error = error;
+				}					
 				
-				if(error){
-					$scope.usoActual.mensajeError = 'Todos lo campos son necesarios.';
+				if($scope.error){
+					$scope.mensajeError = 'Todos lo campos son necesarios.';
 					return;
 				} 				
 
-				for (var i in $scope.detalleActual.usos) {
-					var uso = $scope.detalleActual.usos[i];						
-					if(uso.enfermedad.nombre===$scope.usoActual.enfermedad.nombre
-						&& uso.especie.nombre===$scope.usoActual.especie.nombre){
-						$scope.usoActual.error = true;
-						$scope.usoActual.mensajeError = 'Los datos seleccionados ya se encuentran en la lista.';
+				for (var i in $scope.usos) {
+					var uso = $scope.usos[i];						
+					if(uso.enfermedad.nombre===$scope.uso.enfermedad.nombre
+						&& uso.especie.nombre===$scope.uso.especie.nombre){
+						$scope.error = true;
+						$scope.mensajeError = 'Los datos seleccionados ya se encuentran en la lista.';
 						return;
 					}
 				}
 
 				
-				$scope.detalleActual.usos.push($scope.usoActual);				
-				$scope.usoActual = {
+				$scope.usos.push($scope.uso);				
+				$scope.uso = {
 					cantidad: '',
 					enfermedad: '',
 					especie: ''
 				};
 			}
 
-			$scope.editarUso = function (indice) {
-				$scope.detalleActual.usos.forEach(function (uso) {
+			$scope.editarUso = function ($index) {
+				$scope.usos.forEach(function (uso) {
 					uso.esActual = false;
 				});
 
-				$scope.detalleActual.usos[indice].esActual = true;
+				$scope.usos[$index].esActual = true;
 			}
 
-			$scope.eliminarUso = function (indice) {
-				$scope.detalleActual.usos.forEach(function (uso) {
+			$scope.eliminarUso = function ($index) {
+				$scope.usos.forEach(function (uso) {
 					uso.esActual = false;					
 				});	
-				$scope.detalleActual.usos.splice(indice, 1);
-			}		
+				$scope.usos.splice($index, 1);
+			}
+
+			$scope.ok = function () {				
+				if($scope.usos.length <= 0){
+					$scope.error = true;
+					$scope.mensajeError = 'No ha ingresado items.';
+					return;
+				}
+				$modalInstance.close($scope.usos);
+			}
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}
 		}]);
 })();
