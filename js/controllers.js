@@ -16,11 +16,49 @@
 					});
 				});
 		}])
-		.controller('VentasController', ['$scope', '$http', function ($scope, $http) {						
-			$http.get('http://localhost:8000/ventas/?tecnico=2')
-				.success(function (data) {
-					$scope.ventas = data;										
+		.controller('VentasController', ['$scope', '$http', '$q', 'ventaService', function ($scope, $http, $q, ventaService) {						
+			var petsCliente, petsAsociacion;
+			ventaService.getTodos()
+				.then(function (data) {
+					$scope.ventas = data;
+					petsCliente = $scope.ventas.map(function (venta) {
+						venta.idCliente = venta.cliente;
+						return $http.get('http://192.168.1.30:8000/clientes/'+venta.idCliente);
+					});
+
+					petsAsociacion = $scope.ventas.map(function (venta) {
+						venta.idAsociacion = venta.asociacion;
+						return $http.get('http://192.168.1.30:8000/asociaciones/'+venta.idAsociacion);
+					});
+
+					$q.all(petsCliente).then(function (clientes) {
+						for(var i=0; i<$scope.ventas.length;i++){
+							var venta = $scope.ventas[i];
+							for(var j=0; i<clientes.length;j++){
+								var cliente = clientes[j];								
+								if(venta.idCliente === cliente.data.id){
+									venta.cliente = cliente.data;
+									break;
+								}
+							}
+						}
+					});
+
+					$q.all(petsAsociacion).then(function (asociaciones) {
+						for(var i=0; i<$scope.ventas.length;i++){
+							var venta = $scope.ventas[i];
+							for(var j=0; i<asociaciones.length;j++){
+								var asociacion = asociaciones[j];								
+								if(venta.idAsociacion === asociacion.data.id){
+									venta.asociacion = asociacion.data;
+									break;
+								}
+							}
+						}
+					});
 				});
+
+			
 		}])
 		.controller('VentaController', ['$scope', '$modal', '$routeParams','ventaService', 'asociacionService', function ($scope, $modal, $routeParams, ventaService, asociacionService) {
 			var idVenta = parseInt($routeParams.id);							
@@ -29,14 +67,24 @@
 			$scope.error = false;
 			$scope.mensajeError = '';
 			$scope.asociaciones = [];
-			$scope.venta = {};					
+			$scope.venta = {};				
 			$scope.detalles = [];
 
 			//Acciones constructoras
 			if(!isNaN(idVenta)){
-				ventaService.get(idVenta)
+				ventaService.getPorId(idVenta)
 					.then(function (data) {
-						$scope.venta = data;					
+						var fecha = data.venta.fecha;
+						data.venta.fecha = new Date(fecha);
+						data.venta.fecha.setDate(fecha.split('-')[2]);
+						$scope.venta = data.venta;						
+						$scope.detalles = data.detalles;						
+						$scope.detalles.forEach(function (detalle) {
+							detalle.valorUnitario = detalle.precio_unitario;
+							detalle.valorTotal = detalle.precio_total;
+						});
+
+						
 					});
 			}
 
@@ -46,7 +94,7 @@
 				});
 			
 			//Funciones
-			$scope.buscarCliente = function () {				
+			$scope.buscarCliente = function () {			
 				$modal.open({					
 					templateUrl: 'partials/cliente-dialog.html',
 					controller: 'ClienteController',
@@ -76,11 +124,7 @@
 					$scope.calcularTotal($index);
 				});
 			}		
-
-			$scope.guardarVenta = function () {
-				console.log($scope.venta);
-			}
-
+			
 			$scope.agregarDetalle = function () {
 				$scope.error = false;
 
@@ -96,11 +140,19 @@
 				if($scope.detalles.length > 0){
 					var prod = $scope.detalles[0].producto;
 					var valt = $scope.detalles[0].valorTotal;
+					var emptyUsos = $scope.detalles[0].usos.length <= 0? true:false;
 					if(!prod || !valt){
 						$scope.error = true;
 						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
 						return;
 					}
+
+					if(emptyUsos){
+						$scope.error = true;
+						$scope.mensajeError = 'Debe especificar los usos del producto';
+						return;	
+					}
+
 				}
 
 				$scope.detalles.forEach(function (element) {
@@ -127,16 +179,7 @@
 
 			$scope.eliminarDetalle = function ($index) {	
 				$scope.error = false;
-
-				for(var i=0; i < $scope.detalles.length; i++){
-					$scope.detalles[i].esActual = false;
-					if(!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal){
-						$scope.detalles.splice(i,1);
-						if(i < $index) $index = $index -1;
-						i = i-1;
-					}
-				}				
-				$scope.detalles.splice($index, 1);
+				$scope.detalles.splice($index, 1);				
 			}		
 
 			$scope.calcularTotal = function ($index) {											
@@ -157,10 +200,66 @@
 							return $scope.detalles[$index];
 						}
 					}					
-				}).result.then(function (data) {
-					$scope.detalles[$index].usos = data;
+				}).result.then(function (data) {					
+					$scope.detalles[$index].usos = data;					
 				});
-			}					
+			}
+
+			$scope.seleccionarFecha = function ($event) {
+				console.log($scope.venta.fecha.getTime());
+				$event.preventDefault;
+				$event.stopPropagation();
+				$scope.venta.fechaPopup = true;				
+			}			
+
+			$scope.guardarVenta = function () {
+				$scope.error = false;
+				if(!$scope.venta.asociacion) $scope.error = true;
+				if(!$scope.venta.cliente) $scope.error = true;
+				if(!$scope.venta.fecha) $scope.error = true;
+
+				if($scope.error){
+					$scope.mensajeError = 'Debe llenar todos los campos de encabezado.';
+					return;
+				}
+
+				if($scope.detalles.length < 1){
+					$scope.error = true;	
+					$scope.mensajeError = 'No ha ingresado detalles de venta.';
+					return;
+				} 
+
+				for (var i in $scope.detalles) {
+					var detalle = $scope.detalles[i];
+					if(!detalle.producto || !detalle.valorTotal){
+						$scope.error = true;
+						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
+						return;
+					}
+				}
+
+				for (var i in $scope.detalles) {
+					var detalle = $scope.detalles[i];
+					if(detalle.usos.length < 1){
+						$scope.error = true;
+						$scope.mensajeError = 'El item ' + detalle.producto.nombre + ' no tiene USOS resgistrados';
+						return;
+					}
+				}
+
+				var total = 0;
+				for(var i in $scope.detalles){
+					var detalle = $scope.detalles[i];
+					total+=detalle.valorTotal;
+				}
+
+				$scope.venta.valor_total = total;				
+
+				ventaService.guardar({
+					venta: $scope.venta,
+					detalles: $scope.detalles,
+				});
+			}				
 		}])
 		.controller('ClienteController', ['$scope', '$modalInstance', 'clienteService', function ($scope, $modalInstance, clienteService) {
 			var dataList = {};
@@ -295,7 +394,7 @@
 				enfermedad: '',
 				especie: ''
 			};
-			$scope.usos = [];
+			$scope.usos = data.usos;
 			$scope.enfermedades = [];
 			$scope.especies = [];	
 			$scope.error = false;
@@ -310,6 +409,10 @@
 				.then(function (data) {
 					$scope.especies = data;
 				});
+
+			$scope.usos.forEach(function (element) {
+				element.esActual = false;
+			})
 
 			$scope.agregarUso = function () {				
 				$scope.error = false;	
