@@ -14,13 +14,15 @@
 		</div>	
 		
 		<div id="enfermedadUsos" class="col-xs-4 input-inline">
-			<select ng-model="uso.enfermedad" ng-options="enfermedad.nombre for enfermedad in enfermedades" class="form-control">
-				<option value="">-- Enfermedad --</option>								
+			<select ng-model="uso.enfermedad" class="form-control">
+				<option value="">-- Enfermedad --</option>
+				<option ng-repeat="enfermedad in enfermedades" value="{{enfermedad.id}}">{{enfermedad.nombre}}</option>
 			</select>							
 		</div>
 		<div id="especieUsos" class="col-xs-4 input-inline">
-			<select ng-model="uso.especie" ng-options="especie.nombre for especie in especies" class="form-control">
+			<select ng-model="uso.especie" class="form-control">
 				<option value="">-- Especie --</option>
+				<option ng-repeat="especie in especies" value="{{especie.id}}">{{especie.nombre}}</option>
 			</select>							
 		</div>
 		<div class="col-xs-2 input-inline">							
@@ -48,14 +50,16 @@
 						<p ng-hide="uso.esActual">{{uso.cantidad}}</p>
 					</td>
 					<td class="col-xs-4">
-						<select ng-show="uso.esActual" ng-model="uso.enfermedad" ng-options="enfermedad.nombre for enfermedad in enfermedades" class="form-control input-sm">				
+						<select ng-show="uso.esActual" ng-model="uso.enfermedad" class="form-control input-sm">
+							<option ng-repeat="enfermedad in enfermedades" value="{{enfermedad.id}}">{{enfermedad.nombre}}</option>
 						</select>
-						<p ng-hide="uso.esActual">{{uso.enfermedad.nombre}}</p>
+						<p ng-hide="uso.esActual">{{uso.enfermedadSelected.nombre}}</p>
 					</td>
 					<td class="col-xs-4">
-						<select ng-show="uso.esActual" ng-model="uso.especie" ng-options="especie.nombre for especie in especies" class="form-control input-sm">											
+						<select ng-show="uso.esActual" ng-model="uso.especie" class="form-control input-sm">
+							<option ng-repeat="especie in especies" value="{{especie.id}}">{{especie.nombre}}</option>
 						</select>
-						<p ng-hide="uso.esActual">{{uso.especie.nombre}}</p>
+						<p ng-hide="uso.esActual">{{uso.especieSelected.nombre}}</p>
 					</td>									
 					<td class="col-xs-2">										
 						<button ng-click="editarUso($index)" class="btn btn-primary btn-sm">

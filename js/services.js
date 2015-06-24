@@ -1,50 +1,66 @@
 (function() {
-	var asociacionUrl = 'http://192.168.1.30:8000/asociaciones/';
-	var productoUrl = 'http://192.168.1.30:8000/productos/';
-	var enfermedadUrl = 'http://192.168.1.30:8000/enfermedades/';
-	var especieUrl = 'http://192.168.1.30:8000/especies/';
-	var ventaUrl= 'http://192.168.1.30:8000/ventas/';
-	var detalleVentaUrl = 'http://192.168.1.30:8000/detallesventa/';
-	var usosVentaUrl = 'http://192.168.1.30:8000/usosventa/';	
-	var clienteUrl = 'http://192.168.1.30:8000/clientes/';
+	var baseUrl = 'http://127.0.0.1:8000/'
+	var asociacionUrl = 'http://127.0.0.1:8000/asociaciones/';
+	var productoUrl = 'http://127.0.0.1:8000/productos/';
+	var enfermedadUrl = 'http://127.0.0.1:8000/enfermedades/';
+	var especieUrl = 'http://127.0.0.1:8000/especies/';	
+	var detalleVentaUrl = 'http://127.0.0.1:8000/detallesventa/';
+	var usosVentaUrl = 'http://127.0.0.1:8000/usosventa/';
+	var clienteUrl = 'http://127.0.0.1:8000/clientes/';
 
 	angular.module('botiquin.services', [])
 
 		.factory('ventaService',['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {			
 			function getVentaPorId (id) {
-				var deferred = $q.defer();
+				var deferred = $q.defer();				
 
-				$http.get(ventaUrl+id)
+				$http.get(baseUrl+'ventas/'+id)
 					.success(function (venta) {
 						$http.get(clienteUrl+venta.cliente)
 							.success(function (cliente) {
 								venta.cliente = cliente;							
 							});
 
-						$http.get(asociacionUrl+venta.asociacion)
-							.success(function (asociacion) {
-								venta.asociacion = asociacion;
-							});
-
 						$http.get(detalleVentaUrl+'?venta='+venta.id)
 							.success(function (detalles) {
-								detalles.forEach(function (detalle) {
-									$http.get(productoUrl+detalle.producto)
-										.success(function (producto) {
-											detalle.producto = producto;
-										});
-
-									$http.get(usosVentaUrl+'?detalleventa='+detalle.id)
-										.success(function (usos) {
-											detalle.usos = usos;
-											deferred.resolve({
-												venta: venta,
-												detalles: detalles
-											});
-										});
+								var petsProducto = detalles.map(function (detalle) {
+									return $http.get(baseUrl+'productos/'+detalle.producto);
 								});
-							});						
 
+								$q.all(petsProducto).then(function (productos) {									
+									for(var i in detalles) {
+										for(var j in productos) {
+											if(detalles[i].producto === productos[j].data.id){
+												detalles[i].producto = productos[j].data;
+												break;
+											}
+										}
+									}
+
+									var petsUsos = detalles.map(function (detalle) {
+										return $http.get(baseUrl+'usosventa/?detalleventa='+detalle.id);
+									});
+
+									$q.all(petsUsos).then(function (usos) {
+										for(var i in detalles) {
+											detalles[i].usos = [];											
+											for(var j=0;j<usos.length;j++) {
+												var usos_detalle = usos[j].data;
+												window.usos = usos[0].data;
+												for(var k=0;k<usos_detalle.length;k++){													
+													if(detalles[i].id === usos_detalle[k].detalle_venta) {
+														detalles[i].usos.push(usos_detalle[k]);
+													}
+												}
+											}
+										}
+										deferred.resolve({
+											venta: venta,
+											detalles: detalles
+										});
+									});
+								});
+							});
 					});
 
 				return deferred.promise;
@@ -53,7 +69,7 @@
 			function getVentaTodos () {
 				var deferred = $q.defer();
 
-				$http.get(ventaUrl)
+				$http.get(baseUrl+'ventas/')
 					.success(function (ventas) {						
 						deferred.resolve(ventas);
 					});
@@ -69,11 +85,12 @@
 			}
 
 			function guardar (data) {
-				$http.post(ventaUrl, {
+				var deferred = $q.defer();
+				$http.post(baseUrl+'ventas/', {
 					fecha: formatFecha(data.venta.fecha),
 					valor_total: data.venta.valor_total,
 					cliente: data.venta.cliente.id,
-					asociacion: data.venta.asociacion.id
+					asociacion: data.venta.asociacion
 				}).success(function (venta) {					
 					data.detalles.forEach(function (_detalle) {
 						$http.post(detalleVentaUrl, {
@@ -89,13 +106,14 @@
 									enfermedad: _uso.enfermedad.id,
 									especie: _uso.especie.id,
 									detalle_venta: detalle.id
+								}).success(function () {
+									deferred.resolve();
 								});
 							});
 						});
 					});					
-				}).error(function (err) {
-					console.log(err);
 				});
+				return deferred.promise;
 			}
 			
 			return {
@@ -137,7 +155,7 @@
 			function getAsociacionesPorTecnico (tecnico) {
 				var deferred = $q.defer();
 
-				$http.get('http://localhost:8000/asociaciones/?tecnico='+tecnico)
+				$http.get(asociacionUrl+'?tecnico='+tecnico)
 					.success(function (data) {
 						data.every(function (asociacion) {
 							asociacion.tecnico = JSON.parse(asociacion.tecnico);
@@ -161,7 +179,7 @@
 			function getEnfermedadesTodos () { 
 				var deferred = $q.defer();
 
-				$http.get('http://localhost:8000/enfermedades/')
+				$http.get(enfermedadUrl)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -178,7 +196,7 @@
 			function getEspeciesTodos () { 
 				var deferred = $q.defer();
 
-				$http.get('http://localhost:8000/especies/')
+				$http.get(especieUrl)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -195,7 +213,7 @@
 			function getClientesPorId (id) {
 				var deferred = $q.defer();
 
-				$http.get('http://192.168.1.30:8000/clientes/'+id)
+				$http.get(clienteUrl+id)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -206,7 +224,7 @@
 			function getClientesTodos () {
 				var deferred = $q.defer();
 
-				$http.get('http://localhost:8000/clientes/')
+				$http.get(clienteUrl)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -224,7 +242,7 @@
 			function getProductosTodos () {
 				var deferred = $q.defer();
 
-				$http.get('http://localhost:8000/productos/')
+				$http.get(productoUrl)
 					.success(function (data) {
 						deferred.resolve(data);
 					});

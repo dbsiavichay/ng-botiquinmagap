@@ -23,12 +23,12 @@
 					$scope.ventas = data;
 					petsCliente = $scope.ventas.map(function (venta) {
 						venta.idCliente = venta.cliente;
-						return $http.get('http://192.168.1.30:8000/clientes/'+venta.idCliente);
+						return $http.get('http://127.0.0.1:8000/clientes/'+venta.idCliente);
 					});
 
 					petsAsociacion = $scope.ventas.map(function (venta) {
 						venta.idAsociacion = venta.asociacion;
-						return $http.get('http://192.168.1.30:8000/asociaciones/'+venta.idAsociacion);
+						return $http.get('http://127.0.0.1:8000/asociaciones/'+venta.idAsociacion);
 					});
 
 					$q.all(petsCliente).then(function (clientes) {
@@ -56,18 +56,17 @@
 							}
 						}
 					});
-				});
-
-			
+				});			
 		}])
-		.controller('VentaController', ['$scope', '$modal', '$routeParams','ventaService', 'asociacionService', function ($scope, $modal, $routeParams, ventaService, asociacionService) {
-			var idVenta = parseInt($routeParams.id);							
+		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {
+			var idVenta = parseInt($routeParams.id);
 
 			//Declaracion de variables
 			$scope.error = false;
 			$scope.mensajeError = '';
 			$scope.asociaciones = [];
-			$scope.venta = {};				
+			$scope.venta = {};
+			$scope.venta.fecha = new Date();				
 			$scope.detalles = [];
 
 			//Acciones constructoras
@@ -82,9 +81,7 @@
 						$scope.detalles.forEach(function (detalle) {
 							detalle.valorUnitario = detalle.precio_unitario;
 							detalle.valorTotal = detalle.precio_total;
-						});
-
-						
+						});						
 					});
 			}
 
@@ -94,7 +91,17 @@
 				});
 			
 			//Funciones
-			$scope.buscarCliente = function () {			
+			$scope.cancelEnter = function ($event) {
+				if($event.keyCode === 13) $event.preventDefault();
+			}
+
+			$scope.buscarCliente = function ($event) {
+				if($event.keyCode === 13){
+					console.log('cliente');
+				}
+			}
+
+			$scope.seleccionarCliente = function () {			
 				$modal.open({					
 					templateUrl: 'partials/cliente-dialog.html',
 					controller: 'ClienteController',
@@ -103,7 +110,7 @@
 				});				
 			}
 
-			$scope.buscarProducto = function ($index) {
+			$scope.seleccionarProducto = function ($index) {
 				$modal.open({
 					templateUrl: 'partials/producto-dialog.html',
 					controller: 'ProductoController',
@@ -191,9 +198,9 @@
 				}	
 			}
 
-			$scope.buscarUsos = function ($index) {
+			$scope.seleccionarUsos = function ($index) {
 				$modal.open({
-					templateUrl: 'partials/uso-dialog.html',
+					templateUrl: 'partials/modal-uso.html',
 					controller: 'UsoController',
 					resolve: {
 						data: function () {
@@ -258,6 +265,8 @@
 				ventaService.guardar({
 					venta: $scope.venta,
 					detalles: $scope.detalles,
+				}).then(function () {
+					$location.path('/ventas');
 				});
 			}				
 		}])
@@ -402,17 +411,37 @@
 
 			enfermedadService.getTodos()
 				.then(function (data) {
-					$scope.enfermedades = data;
+					$scope.enfermedades = data;					
+
+					$scope.usos.forEach(function (uso) {						
+						for(var i = 0; i < $scope.enfermedades.length; i++) {
+							var enfermedad = $scope.enfermedades[i];					
+							if(enfermedad.id == uso.enfermedad){
+								uso.enfermedadSelected = enfermedad;
+								break;
+							}
+						}					
+					});
 				});
 
 			especieService.getTodos()
 				.then(function (data) {
 					$scope.especies = data;
+
+					$scope.usos.forEach(function (uso) {												
+						for(var i = 0; i < $scope.especies.length; i++) {
+							var especie = $scope.especies[i];
+							if(especie.id == uso.especie){
+								uso.especieSelected = especie;
+								break;
+							}
+						}
+					});
 				});
 
 			$scope.usos.forEach(function (element) {
 				element.esActual = false;
-			})
+			});			
 
 			$scope.agregarUso = function () {				
 				$scope.error = false;	
@@ -443,9 +472,24 @@
 						$scope.mensajeError = 'Los datos seleccionados ya se encuentran en la lista.';
 						return;
 					}
+				}				
+
+				for(var i = 0; i < $scope.enfermedades.length; i++) {
+					var enfermedad = $scope.enfermedades[i];					
+					if(enfermedad.id == $scope.uso.enfermedad){
+						$scope.uso.enfermedadSelected = enfermedad;
+						break;
+					}
 				}
 
-				
+				for(var i = 0; i < $scope.especies.length; i++) {
+					var especie = $scope.especies[i];
+					if(especie.id == $scope.uso.especie){
+						$scope.uso.especieSelected = especie;
+						break;
+					}
+				}
+
 				$scope.usos.push($scope.uso);				
 				$scope.uso = {
 					cantidad: '',

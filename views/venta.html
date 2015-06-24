@@ -7,8 +7,9 @@
     				<div class="form-group">
 					  	<label class="control-label col-md-2">Asociación</label>
 					  	<div class="col-md-9">
-					    	<select ng-model="venta.asociacion" ng-options="asociacion.nombre for asociacion in asociaciones" class="form-control">
+					    	<select ng-model="venta.asociacion" class="form-control">
 					    		<option value="">-- Seleccionar --</option>	
+					    		<option ng-repeat="asociacion in asociaciones" value="{{asociacion.id}}">{{asociacion.nombre}}</option>
 					    	</select>    	
 					  	</div>  	
 					</div>	
@@ -16,9 +17,9 @@
 				      	<label class="control-label col-md-2">Cliente</label>
 				      	<div class="col-md-4">
 				        	<div class="input-group">    					  
-      							<input ng-model="venta.cliente.cedula" type="text" class="form-control" placeholder="Cédula">
+      							<input ng-model="venta.cliente.cedula" ng-keydown="cancelEnter($event)" ng-keyup="buscarCliente($event)" type="text" class="form-control" placeholder="Cédula">
       							<span class="input-group-btn">
-	      							<button ng-click="buscarCliente()" class="btn btn-success">
+	      							<button ng-click="seleccionarCliente()" class="btn btn-success">
 										<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
 									</button>
       							</span>
@@ -32,7 +33,7 @@
 				    <div class="form-group">
 				      	<label class="control-label col-md-2">Fecha</label>
 				      	<div class="col-md-9">
-			              	<input type="date" ng-model="venta.fecha" placeholder="yyyy-MM-dd" min="2011-01-01" class="form-control"/>
+			              	<input ng-model="venta.fecha" type="date" placeholder="yyyy-MM-dd" min="2011-01-01" class="form-control"/>
 				      	</div>
 				    </div>
   				</div>
@@ -41,7 +42,7 @@
 			<div class="panel panel-default">
   				<div class="panel-body">
 					<div ng-show="error" class="alert alert-danger" role="alert">						
-						<strong>Error!</strong> {{mensajeError}}
+						<strong>Error!!!</strong> {{mensajeError}}
 					</div>
 					<div class="clearfix">						
 	  					<button ng-click="agregarDetalle()" class="btn btn-success btn-sm pull-left">
@@ -71,14 +72,14 @@
 								</tr>
 								<tr ng-repeat="detalle in detalles">
 									<td class="col-xs-1">
-										<input ng-show="detalle.esActual" ng-model="detalle.cantidad" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtCantidad" placeholder="Ej. 1.12">
+										<input ng-keydown="cancelEnter($event)" ng-show="detalle.esActual" ng-model="detalle.cantidad" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtCantidad" placeholder="Ej. 1.12">
 										<p ng-hide="detalle.esActual">{{detalle.cantidad}}</p>
 									</td>
 									<td class="col-xs-5">
 										<div ng-show="detalle.esActual" class="input-group input-group-sm">  
       										<input type="text" class="form-control" placeholder="Buscar producto" value="{{detalle.producto.nombre}}" readonly>
       										<span class="input-group-btn">
-		      									<button ng-click="buscarProducto($index)" class="btn btn-success" title="Buscar">
+		      									<button ng-click="seleccionarProducto($index)" class="btn btn-success" title="Buscar">
 													<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
 												</button>
 			      							</span>
@@ -86,7 +87,7 @@
 			    						<p ng-hide="detalle.esActual">{{detalle.producto.nombre}}</p>
 									</td>
 									<td class="col-xs-2">
-										<input ng-show="detalle.esActual" ng-model="detalle.valorUnitario" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtValorUnitario" placeholder="Precio del producto">
+										<input ng-keydown="cancelEnter($event)" ng-show="detalle.esActual" ng-model="detalle.valorUnitario" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtValorUnitario" placeholder="Precio del producto">
 										<p ng-hide="detalle.esActual">{{detalle.valorUnitario}}</p>
 									</td>
 									<td class="col-xs-2">
@@ -94,7 +95,7 @@
 										<p ng-hide="detalle.esActual">{{detalle.valorTotal}}</p>
 									</td>
 									<td class="col-xs-2">
-										<button ng-click="buscarUsos($index)" class="btn btn-danger btn-sm" title="Registro de usos">
+										<button ng-click="seleccionarUsos($index)" class="btn btn-danger btn-sm" title="Registro de usos">
 											<strong>USOS</strong>
 										</button>										
 										<button ng-click="editarDetalle($index)" class="btn btn-primary btn-sm">
