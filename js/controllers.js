@@ -525,5 +525,13 @@
 			$scope.cancelar = function () {			
 				$modalInstance.dismiss('cancel');
 			}
+		}])
+		.controller('ComprasController', ['$scope', 'compraService', function ($scope, compraService) {
+			$scope.compras = [];			
+
+			compraService.getTodos()
+				.then(function (data) {
+					$scope.compras = data;
+				});
 		}]);
 })();

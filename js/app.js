@@ -21,6 +21,14 @@
 				templateUrl: 'views/venta.html',
 				controller: 'VentasController'
 			})
+			.when('/compras', {
+				templateUrl: 'views/compras.html',
+				controller: 'ComprasController'			
+			})
+			.when('/compras/:id', {
+				templateUrl: 'views/compra.html',
+				controller: 'CompraController'
+			})
 			.otherwise({
 				redirectTo: '/'
 			});

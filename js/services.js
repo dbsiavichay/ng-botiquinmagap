@@ -10,7 +10,7 @@
 
 	angular.module('botiquin.services', [])
 
-		.factory('ventaService',['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {			
+		.factory('ventaService',['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
 			function getVentaPorId (id) {
 				var deferred = $q.defer();				
 
@@ -122,7 +122,7 @@
 				guardar: guardar
 			}			
 		}])
-		.factory('asociacionService', ['$http', '$q',function ($http, $q) {			
+		.factory('asociacionService', ['$http', '$q',function ($http, $q) {
 			function getAsociacionPorId (id) {
 				var deferred = $q.defer();
 
@@ -252,6 +252,76 @@
 
 			return {
 				getTodos: getProductosTodos,
+			}
+		}])
+		.factory('compraService', ['$http', '$q', function ($http, $q) {			
+			function getCompraTodos () {
+				var deferred = $q.defer();
+				var peticiones = [];
+				$http.get(baseUrl+'compras/')
+					.success(function (compras) {
+						peticiones = compras.map(function (compra) {
+							return $http.get(baseUrl+'asociaciones/'+compra.asociacion);
+						});
+
+						$q.all(peticiones).then(function (asociaciones) {
+							for(var i=0;i<compras.length;i++) {
+								for(var j=0;j<asociaciones.length;j++) {
+									if(compras[i].asociacion === asociaciones[j].data.id) {
+										compras[i].asociacion = asociaciones[j].data;
+										break;
+									}
+								}
+							}
+							deferred.resolve(compras);
+						});
+					});
+
+				return deferred.promise;	
+			}
+
+			var formatFecha = function (fecha) {
+				var yyyy = fecha.getFullYear().toString();
+				var mm = (fecha.getMonth()+1).toString();
+				var dd  = fecha.getDate().toString();				
+				return yyyy +'-'+(mm[1]?mm:"0"+mm[0]) +'-'+ (dd[1]?dd:"0"+dd[0]);
+			}
+
+			function guardar (data) {
+				var deferred = $q.defer();
+				$http.post(baseUrl+'ventas/', {
+					fecha: formatFecha(data.venta.fecha),
+					valor_total: data.venta.valor_total,
+					cliente: data.venta.cliente.id,
+					asociacion: data.venta.asociacion
+				}).success(function (venta) {					
+					data.detalles.forEach(function (_detalle) {
+						$http.post(detalleVentaUrl, {
+							cantidad: _detalle.cantidad,
+							precio_unitario: _detalle.valorUnitario,
+							precio_total: _detalle.valorTotal,
+							producto:_detalle.producto.id,
+							venta: venta.id
+						}).success(function (detalle) {
+							_detalle.usos.forEach(function (_uso) {
+								$http.post(usosVentaUrl, {
+									cantidad: _uso.cantidad,
+									enfermedad: _uso.enfermedad.id,
+									especie: _uso.especie.id,
+									detalle_venta: detalle.id
+								}).success(function () {
+									deferred.resolve();
+								});
+							});
+						});
+					});					
+				});
+				return deferred.promise;
+			}
+			
+			return {				
+				getTodos: getCompraTodos,
+				guardar: guardar
 			}
 		}]);
 })();
