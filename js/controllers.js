@@ -533,5 +533,160 @@
 				.then(function (data) {
 					$scope.compras = data;
 				});
+		}])
+		.controller('CompraController', ['$scope', '$modal', '$location', '$routeParams', 'compraService', 'asociacionService', function ($scope, $modal, $location, $routeParams, compraService, asociacionService) {
+			var idCompra = parseInt($routeParams.id);
+
+			$scope.asociaciones = [];
+			$scope.compra = {};
+			$scope.compra.fecha = new Date();
+			$scope.detalles = [];
+			$scope.error = false;
+			$scope.mensajeError = '';
+
+			if(!isNaN(idCompra)){
+				compraService.getPorId(idCompra)
+					.then(function (data) {
+						var fecha = data.compra.fecha;
+						data.compra.fecha = new Date(fecha);
+						data.compra.fecha.setDate(fecha.split('-')[2]);
+						$scope.compra = data.compra;						
+						$scope.detalles = data.detalles;						
+						$scope.detalles.forEach(function (detalle) {
+							detalle.valorUnitario = detalle.costo_unitario;
+							detalle.valorTotal = detalle.costo_total;
+						});						
+					});
+			}
+
+			asociacionService.getTodos()
+				.then(function (data) {
+					$scope.asociaciones = data;
+				});
+
+			$scope.cancelEnter = function ($event) {
+				if($event.keyCode === 13) $event.preventDefault();
+			}
+
+			$scope.seleccionarProducto = function ($index) {
+				$modal.open({
+					templateUrl: 'partials/producto-dialog.html',
+					controller: 'ProductoController',
+					size: 'lg'
+				}).result.then(function (data) {
+					$scope.error = false;
+
+					for(var i in $scope.detalles){
+						if($scope.detalles[i].producto.id === data.id){
+							$scope.error = true;
+							$scope.mensajeError = 'El producto seleccionado ya se encuentra en la lista';	
+							return;
+						}
+					}					
+
+					$scope.detalles[$index].producto = data;
+					$scope.detalles[$index].valorUnitario = data.precio_referencial;
+					$scope.calcularTotal($index);
+				});
+			}		
+			
+			$scope.agregarDetalle = function () {
+				$scope.error = false;
+
+				var detalle = {
+					cantidad: '1',
+					producto: '',
+					valorUnitario: '0',
+					valorTotal: '',					
+					esActual: true
+				};
+
+				if($scope.detalles.length > 0){
+					var prod = $scope.detalles[0].producto;
+					var valt = $scope.detalles[0].valorTotal;
+
+					if(!prod || !valt){
+						$scope.error = true;
+						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
+						return;
+					}					
+				}
+
+				$scope.detalles.forEach(function (element) {
+					element.esActual = false;
+				});
+
+				$scope.detalles.unshift(detalle);
+			}
+
+			$scope.editarDetalle = function ($index) {				
+				$scope.error = false;
+
+				for(var i=0; i < $scope.detalles.length; i++){
+					$scope.detalles[i].esActual = false;
+					if((!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal) && $index != i){
+						$scope.detalles.splice(i,1);
+						if(i < $index) $index = $index -1;
+						i = i-1;
+					}
+				}
+							
+				$scope.detalles[$index].esActual = true;
+			}
+
+			$scope.eliminarDetalle = function ($index) {	
+				$scope.error = false;
+				$scope.detalles.splice($index, 1);				
+			}		
+
+			$scope.calcularTotal = function ($index) {											
+				var p = $scope.detalles[$index].valorUnitario;
+				var c = $scope.detalles[$index].cantidad;
+				$scope.detalles[$index].valorTotal = p * c;
+				if(isNaN($scope.detalles[$index].valorTotal)){
+					$scope.detalles[$index].valorTotal = "0.00";
+				}	
+			}
+
+			$scope.guardar = function () {
+				$scope.error = false;
+				if(!$scope.compra.asociacion) $scope.error = true;				
+				if(!$scope.compra.fecha) $scope.error = true;
+
+				if($scope.error){
+					$scope.mensajeError = 'Debe llenar todos los campos de encabezado.';
+					return;
+				}
+
+				if($scope.detalles.length < 1){
+					$scope.error = true;	
+					$scope.mensajeError = 'No ha ingresado detalles de venta.';
+					return;
+				} 
+
+				for (var i in $scope.detalles) {
+					var detalle = $scope.detalles[i];
+					if(!detalle.producto || !detalle.valorTotal){
+						$scope.error = true;
+						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
+						return;
+					}
+				}
+
+				var total = 0;
+				for(var i in $scope.detalles){
+					var detalle = $scope.detalles[i];
+					total+=detalle.valorTotal;
+				}
+
+				$scope.compra.valor_total = total;				
+
+				compraService.guardar({
+					compra: $scope.compra,
+					detalles: $scope.detalles,
+				}).then(function () {
+					$location.path('/compras');
+				});
+			}
 		}]);
 })();

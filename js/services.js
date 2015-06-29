@@ -254,7 +254,38 @@
 				getTodos: getProductosTodos,
 			}
 		}])
-		.factory('compraService', ['$http', '$q', function ($http, $q) {			
+		.factory('compraService', ['$http', '$q', function ($http, $q) {
+			function getCompraPorId (id) {
+				var deferred = $q.defer();				
+
+				$http.get(baseUrl+'compras/'+id)
+					.success(function (compra) {						
+						$http.get(baseUrl+'detallescompra?compra='+compra.id)
+							.success(function (detalles) {
+								var peticiones = detalles.map(function (detalle) {
+									return $http.get(baseUrl+'productos/'+detalle.producto);
+								});
+
+								$q.all(peticiones).then(function (productos) {									
+									for(var i in detalles) {
+										for(var j in productos) {
+											if(detalles[i].producto === productos[j].data.id){
+												detalles[i].producto = productos[j].data;
+												break;
+											}
+										}
+									}
+									deferred.resolve({
+										compra: compra,
+										detalles: detalles
+									});
+								});
+							});
+					});
+
+				return deferred.promise;
+			}
+
 			function getCompraTodos () {
 				var deferred = $q.defer();
 				var peticiones = [];
@@ -289,37 +320,28 @@
 
 			function guardar (data) {
 				var deferred = $q.defer();
-				$http.post(baseUrl+'ventas/', {
-					fecha: formatFecha(data.venta.fecha),
-					valor_total: data.venta.valor_total,
-					cliente: data.venta.cliente.id,
-					asociacion: data.venta.asociacion
-				}).success(function (venta) {					
+				$http.post(baseUrl+'compras/', {
+					fecha: formatFecha(data.compra.fecha),
+					valor_total: data.compra.valor_total,					
+					asociacion: data.compra.asociacion
+				}).success(function (compra) {					
 					data.detalles.forEach(function (_detalle) {
-						$http.post(detalleVentaUrl, {
+						$http.post(baseUrl+'detallescompra/', {
 							cantidad: _detalle.cantidad,
-							precio_unitario: _detalle.valorUnitario,
-							precio_total: _detalle.valorTotal,
+							costo_unitario: _detalle.valorUnitario,
+							costo_total: _detalle.valorTotal,
 							producto:_detalle.producto.id,
-							venta: venta.id
+							compra: compra.id
 						}).success(function (detalle) {
-							_detalle.usos.forEach(function (_uso) {
-								$http.post(usosVentaUrl, {
-									cantidad: _uso.cantidad,
-									enfermedad: _uso.enfermedad.id,
-									especie: _uso.especie.id,
-									detalle_venta: detalle.id
-								}).success(function () {
-									deferred.resolve();
-								});
-							});
+							deferred.resolve();							
 						});
 					});					
 				});
 				return deferred.promise;
 			}
 			
-			return {				
+			return {	
+				getPorId: getCompraPorId,			
 				getTodos: getCompraTodos,
 				guardar: guardar
 			}
