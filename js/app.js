@@ -29,6 +29,10 @@
 				templateUrl: 'views/compra.html',
 				controller: 'CompraController'
 			})
+			.when('/inventarios/', {
+				templateUrl: 'views/inventario.html',
+				controller: 'InventarioController'
+			})
 			.otherwise({
 				redirectTo: '/'
 			});

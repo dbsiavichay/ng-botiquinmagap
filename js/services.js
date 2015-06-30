@@ -345,5 +345,25 @@
 				getTodos: getCompraTodos,
 				guardar: guardar
 			}
+		}])
+		.factory('inventarioService', ['$http', '$q', function ($http, $q) {
+			function getInventarioTodos() {
+				var deferred = $q.defer();
+				
+				$http.get(baseUrl+'inventarios/')
+					.success(function (inventarios) {
+						inventarios.forEach(function (inventario) {
+							inventario.costo_total = inventario.cantidad * inventario.costo_unitario;
+						});
+						
+						deferred.resolve(inventarios);						
+					});
+
+				return deferred.promise;	
+			}
+
+			return {
+				getTodos: getInventarioTodos
+			}
 		}]);
 })();

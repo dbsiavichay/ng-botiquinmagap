@@ -688,5 +688,15 @@
 					$location.path('/compras');
 				});
 			}
+		}])
+		.controller('InventarioController', ['$scope', '$modal', 'inventarioService', function ($scope, $modal, inventarioService) {
+			$scope.inventarios = [];
+			$scope.error = false;
+			$scope.mensajeError = '';
+
+			inventarioService.getTodos()
+				.then(function (data) {
+					$scope.inventarios = data;
+				});
 		}]);
 })();
