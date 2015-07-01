@@ -689,7 +689,7 @@
 				});
 			}
 		}])
-		.controller('InventarioController', ['$scope', '$modal', 'inventarioService', function ($scope, $modal, inventarioService) {
+		.controller('InventariosController', ['$scope', '$modal', 'inventarioService', function ($scope, $modal, inventarioService) {
 			$scope.inventarios = [];
 			$scope.error = false;
 			$scope.mensajeError = '';
@@ -698,5 +698,67 @@
 				.then(function (data) {
 					$scope.inventarios = data;
 				});
+		}])
+		.controller('InventarioController', ['$scope', '$modal', '$location', 'inventarioService', function ($scope, $modal, $location, inventarioService) {
+			$scope.kardex = {};
+			$scope.kardex.fecha = new Date();
+			$scope.asociaciones = [];
+			$scope.error = false;
+			$scope.mensajeError = '';
+
+			$scope.transacciones = [
+				'Compra',
+				'Venta',
+				'Inventario inicial',
+				'Devolución',
+				'Regalo',
+				'Otros'
+			];
+
+			inventarioService.getAsociaciones()
+				.then(function (data) {
+					$scope.asociaciones = data;
+				});
+
+			$scope.seleccionarProducto = function () {
+				$modal.open({
+					templateUrl: 'partials/producto-dialog.html',
+					controller: 'ProductoController',
+					size: 'lg'
+				}).result.then(function (data) {			
+					$scope.kardex.producto = data;
+					$scope.kardex.valor_unitario = data.precio_referencial;
+					$scope.calcularTotal();
+				});
+			}
+
+			$scope.calcularTotal = function () {																		
+				$scope.kardex.valor_total = $scope.kardex.cantidad * $scope.kardex.valor_unitario;
+				if(isNaN($scope.kardex.valor_total)){
+					$scope.kardex.valor_total = 0;
+				}	
+			}
+
+			$scope.guardar = function() {
+				inventarioService.getPorAsociacionProducto($scope.kardex.asociacion, $scope.kardex.producto.id)
+					.then(function (data) {
+						if(!data.hasOwnProperty('id')) crear();
+						else editar(data);
+					});				
+			}
+
+			function crear () {
+				inventarioService.guardar($scope.kardex)
+					.then(function () {
+						$location.path('/inventarios');
+					});
+			}
+
+			function editar (inventario) {
+				inventarioService.editar(inventario, $scope.kardex)
+					.then(function () {
+						$location.path('/inventarios');
+					});
+			}
 		}]);
 })();

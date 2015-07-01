@@ -346,24 +346,128 @@
 				guardar: guardar
 			}
 		}])
-		.factory('inventarioService', ['$http', '$q', function ($http, $q) {
-			function getInventarioTodos() {
+		.factory('inventarioService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
+			function getInventarioPorAsociacionProducto(asociacion, producto) {
 				var deferred = $q.defer();
 				
-				$http.get(baseUrl+'inventarios/')
+				$http.get(baseUrl+'inventarios/?asociacion='+asociacion+'&producto='+producto)
 					.success(function (inventarios) {
-						inventarios.forEach(function (inventario) {
-							inventario.costo_total = inventario.cantidad * inventario.costo_unitario;
-						});
+						var inventario = {};
+						if(inventarios.length>0){
+							inventario = inventarios[0];
+						}
 						
-						deferred.resolve(inventarios);						
+						deferred.resolve(inventario);						
 					});
 
 				return deferred.promise;	
 			}
 
+			function getInventarioTodos() {
+				var deferred = $q.defer();
+				
+				$http.get(baseUrl+'inventarios/')
+					.success(function (inventarios) {
+						var peticiones = inventarios.map(function (inventario) {
+							return $http.get(baseUrl+'productos/'+inventario.producto);
+						});
+
+						$q.all(peticiones).then(function (productos) {
+							for(var i = 0; i < inventarios.length; i++) {
+								for(var j = 0; j < productos.length; j++) {
+									if(inventarios[i].producto == productos[j].data.id) {
+										inventarios[i].producto = productos[j].data;
+										break;
+									}
+								}
+							}							
+							deferred.resolve(inventarios);						
+						})
+					});
+
+				return deferred.promise;	
+			}
+
+
+			function guardarInventario (kardex) {
+				var deferred = $q.defer();
+				
+				$http.post(baseUrl+'inventarios/', {
+					cantidad: kardex.cantidad,
+					valor_unitario: kardex.valor_unitario,					
+					producto: kardex.producto.id,
+					asociacion: kardex.asociacion
+				}).success(function (inventario) {
+					$http.post(baseUrl+'kardexs/', {
+						fecha: formatFecha(kardex.fecha),
+						tipo_transaccion: kardex.tipo_transaccion,
+						descripcion: kardex.transaccion + ' - ' + kardex.descripcion,
+						cantidad: kardex.cantidad,
+						valor_unitario: kardex.valor_unitario,
+						saldo: kardex.cantidad,
+						producto: kardex.producto.id,
+						asociacion: kardex.asociacion
+					}).success(function () {
+						deferred.resolve();
+					})
+				});
+
+				return deferred.promise;		
+			}
+
+			function editarInventario (inventario, kardex) {
+				var deferred = $q.defer();				
+				var _cantidad = kardex.tipo_transaccion == 1?
+					inventario.cantidad + kardex.cantidad:inventario.cantidad - kardex.cantidad;
+
+
+				$http.put(baseUrl+'inventarios/'+inventario.id+'/', {
+					cantidad: _cantidad,
+					valor_unitario: kardex.valor_unitario,					
+					producto: kardex.producto.id,
+					asociacion: kardex.asociacion
+				}).success(function (inventario) {
+					$http.post(baseUrl+'kardexs/', {
+						fecha: formatFecha(kardex.fecha),
+						tipo_transaccion: kardex.tipo_transaccion,
+						descripcion: kardex.transaccion + ' - ' + kardex.descripcion,
+						cantidad: kardex.cantidad,
+						valor_unitario: kardex.valor_unitario,
+						saldo: _cantidad,
+						producto: kardex.producto.id,
+						asociacion: kardex.asociacion
+					}).success(function () {
+						deferred.resolve();
+					});
+				});
+
+				return deferred.promise;	
+			}
+
+			function getAsociaciones () {
+				var deferred = $q.defer();
+
+				asociacionService.getTodos()
+					.then(function (data) {
+						deferred.resolve(data)
+					});
+
+				return deferred.promise;	
+			}
+
+			var formatFecha = function (fecha) {
+				var yyyy = fecha.getFullYear().toString();
+				var mm = (fecha.getMonth()+1).toString();
+				var dd  = fecha.getDate().toString();				
+				return yyyy +'-'+(mm[1]?mm:"0"+mm[0]) +'-'+ (dd[1]?dd:"0"+dd[0]);
+			}
+
 			return {
-				getTodos: getInventarioTodos
+				getAsociaciones: getAsociaciones,
+				getPorAsociacionProducto: getInventarioPorAsociacionProducto,
+				getTodos: getInventarioTodos,
+				guardar: guardarInventario,
+				editar: editarInventario
 			}
 		}]);
 })();

@@ -30,6 +30,10 @@
 				controller: 'CompraController'
 			})
 			.when('/inventarios/', {
+				templateUrl: 'views/inventarios.html',
+				controller: 'InventariosController'
+			})
+			.when('/inventarios/:id', {
 				templateUrl: 'views/inventario.html',
 				controller: 'InventarioController'
 			})
