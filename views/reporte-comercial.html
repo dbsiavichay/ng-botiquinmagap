@@ -1,0 +1,19 @@
+<div ng-controller="ReporteController">
+	<div class="form-inline">
+	  	<div class="form-group">
+	    	<label>Asociación</label>
+	    	<select ng-model="opciones.asociacion" class="form-control">
+	    		<option value="">-- Seleccionar --</option>	
+	    		<option ng-repeat="asociacion in asociaciones" value="{{asociacion.id}}">{{asociacion.nombre}}</option>
+	    	</select>
+	  	</div>
+	  	<div class="form-group">
+	    	<label>Mes</label>
+	    	<select ng-model="opciones.mes" class="form-control">
+	    		<option value="">-- Seleccionar --</option>	
+	    		<option ng-repeat="mes in meses" value="{{mes.id}}">{{mes.nombre}}</option>
+	    	</select>
+	  	</div>	  	
+	  	<button ng-click="generar()" class="btn btn-primary">Generar</button>
+	</div>
+</div>

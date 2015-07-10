@@ -469,5 +469,32 @@
 				guardar: guardarInventario,
 				editar: editarInventario
 			}
+		}])
+		.factory('reporteService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
+			function getAsociaciones () {
+				var deferred = $q.defer();
+
+				asociacionService.getTodos()
+					.then(function (data) {
+						deferred.resolve(data)
+					});
+
+				return deferred.promise;	
+			}
+
+			function getVentasMensuales(mes, asociacion) {
+				var deferred = $q.defer();
+				$http.get(baseUrl+'ventas/?asociacion='+asociacion+'&mes='+mes)
+					.success(function (data) {
+						deferred.resolve(data);
+					});
+
+				return deferred.promise;
+			}
+
+			return {
+				getAsociaciones: getAsociaciones,
+				getVentasMensuales: getVentasMensuales
+			}
 		}]);
 })();

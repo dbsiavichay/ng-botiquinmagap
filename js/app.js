@@ -37,6 +37,9 @@
 				templateUrl: 'views/inventario.html',
 				controller: 'InventarioController'
 			})
+			.when('/reportecomercial', {
+				templateUrl: 'views/reporte-comercial.html'				
+			})
 			.otherwise({
 				redirectTo: '/'
 			});

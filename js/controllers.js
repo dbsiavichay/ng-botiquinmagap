@@ -760,5 +760,30 @@
 						$location.path('/inventarios');
 					});
 			}
+		}])
+		.controller('ReporteController', ['$scope', 'reporteService', function ($scope, reporteService) {
+			reporteService.getAsociaciones()
+				.then(function (data) {
+					$scope.asociaciones = data;
+				});
+
+			$scope.opciones = {};
+
+			$scope.meses = [{
+				id: 5,
+				nombre: 'Mayo'
+			},{
+				id: 6,
+				nombre: 'Junio'
+			}];
+
+
+			$scope.generar = function () {				
+				reporteService.getVentasMensuales($scope.opciones.mes, $scope.opciones.asociacion)
+					.then(function (data) {
+						console.log(data);
+					});
+			}
+
 		}]);
 })();
