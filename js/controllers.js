@@ -762,13 +762,10 @@
 			}
 		}])
 		.controller('ReporteController', ['$scope', 'reporteService', function ($scope, reporteService) {
-			reporteService.getAsociaciones()
-				.then(function (data) {
-					$scope.asociaciones = data;
-				});
-
+			$scope.asociacion = {};
+			$scope.detalles = [];
+			$scope.mostrar = false;
 			$scope.opciones = {};
-
 			$scope.meses = [{
 				id: 5,
 				nombre: 'Mayo'
@@ -777,11 +774,24 @@
 				nombre: 'Junio'
 			}];
 
+			reporteService.getAsociaciones()
+				.then(function (data) {
+					$scope.asociaciones = data;
+				});
+
 
 			$scope.generar = function () {				
 				reporteService.getVentasMensuales($scope.opciones.mes, $scope.opciones.asociacion)
 					.then(function (data) {
-						console.log(data);
+						$scope.detalles = data;
+						$scope.mostrar = true;
+
+						for(var i = 0; i < $scope.asociaciones.length; i++) {
+							if($scope.asociaciones[i].id == $scope.opciones.asociacion) {
+								$scope.asociacion = $scope.asociaciones[i];
+								break;
+							}
+						}
 					});
 			}
 

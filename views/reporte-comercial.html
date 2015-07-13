@@ -16,4 +16,57 @@
 	  	</div>	  	
 	  	<button ng-click="generar()" class="btn btn-primary">Generar</button>
 	</div>
+	<div ng-show="mostrar">
+		<hr>
+		<div class="row">
+			<div class="col-md-4">
+				<strong>Nombre de la organizacion: </strong>
+				<p>{{asociacion.nombre}}</p>
+			</div>
+			<div class="col-md-4">
+				<strong>Responsable: </strong>
+				<p>{{asociacion.responsable}}</p>
+			</div>
+			<div class="col-md-4">
+				<strong>Georeferenciación: </strong>
+				<p>{{asociacion.latitud}}, {{asociacion.longitud}}</p>
+			</div>
+			<div class="col-md-4">
+				<strong>Cantón: </strong>
+				<p>{{asociacion.ubicacion.canton}}</p>
+			</div>
+			<div class="col-md-4">
+				<strong>Parroquia: </strong>
+				<p>{{asociacion.ubicacion.parroquia}}</p>
+			</div>
+			<div class="col-md-4">
+				<strong>Sector: </strong>
+				<p>{{asociacion.ubicacion.sector}}</p>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-striped table-condensed">
+				<thead>
+					<tr>
+						<th>ITEM</th>
+						<th>MEDICAMENTO</th>
+						<th>VALOR REFERENCIAL</th>
+						<th>VENDIDOS</th>
+						<th>VALOR TOTAL</th>						
+					</tr>
+				</thead>
+				<tbody>
+					<tr ng-hide="detalles.length > 0"><td colspan="5">No existen registros</td></tr>
+					<tr ng-repeat="detalle in detalles">
+						<td>{{$index + 1}}</td>
+						<td>{{detalle.producto.nombre}}</td>
+						<td>{{detalle.producto.precio_referencial}}</td>
+						<td>{{detalle.cantidad}}</td>
+						<td>{{detalle.precio_total}}</td>						
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
 </div>

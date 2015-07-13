@@ -483,10 +483,55 @@
 			}
 
 			function getVentasMensuales(mes, asociacion) {
-				var deferred = $q.defer();
-				$http.get(baseUrl+'ventas/?asociacion='+asociacion+'&mes='+mes)
-					.success(function (data) {
-						deferred.resolve(data);
+				var deferred = $q.defer();				
+				var detalles = [];
+				var peticiones = [];
+
+				$http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes)
+					.success(function (data) {												
+						if(data.length > 0) {
+							peticiones.push($http.get(baseUrl+'productos/'+data[0].producto));
+							detalles.push({
+								cantidad : parseFloat(data[0].cantidad),
+								producto : data[0].producto,
+								precio_unitario : parseFloat(data[0].precio_unitario),
+								precio_total : parseFloat(data[0].precio_total)
+							});
+						}
+
+						for (var i = 1; i < data.length; i++) {
+							var encontrado = false;
+							for (var j = 0; j < detalles.length; j++) {
+								if(data[i].producto === detalles[j].producto) {
+									detalles[j].cantidad = parseFloat(data[i].cantidad) + detalles[j].cantidad;
+									detalles[j].precio_total = parseFloat(data[i].precio_total) + detalles[j].precio_total;
+									encontrado = true;
+									break;																		
+								}
+							}
+							if(!encontrado) {
+								peticiones.push($http.get(baseUrl+'productos/'+data[i].producto));
+								detalles.push({
+								cantidad : parseFloat(data[i].cantidad),
+								producto : data[i].producto,
+								precio_unitario : parseFloat(data[i].precio_unitario),
+								precio_total : parseFloat(data[i].precio_total)
+							});
+							}
+						}
+
+						$q.all(peticiones)
+							.then(function (productos) {								
+								for (var i = 0; i < productos.length; i++) {
+									for (var j = 0; j < detalles.length; j++) {
+										if(productos[i].data.id===detalles[j].producto) {
+											detalles[j].producto = productos[i].data;
+											break;
+										}
+									}
+								}
+								deferred.resolve(detalles);
+							});
 					});
 
 				return deferred.promise;
