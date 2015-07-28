@@ -40,6 +40,9 @@
 			.when('/reportecomercial', {
 				templateUrl: 'views/reporte-comercial.html'				
 			})
+			.when('/reportekardex', {
+				templateUrl: 'views/reporte-kardex.html'				
+			})
 			.otherwise({
 				redirectTo: '/'
 			});

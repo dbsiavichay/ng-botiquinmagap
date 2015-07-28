@@ -1,4 +1,4 @@
-<div ng-controller="RComercialController">
+<div ng-controller="RKardexController">
 	<div class="form-inline">
 	  	<div class="form-group">
 	    	<label>Asociación</label>
@@ -49,10 +49,10 @@
 				<thead>
 					<tr>
 						<th>ITEM</th>
-						<th>MEDICAMENTO</th>
-						<th>VALOR REFERENCIAL</th>
-						<th>VENDIDOS</th>
-						<th>VALOR TOTAL</th>						
+						<th>PRODUCTO</th>
+						<th>CANTIDAD ENTREGADA</th>
+						<th>CANTIDAD VENDIDA</th>
+						<th>SALDO FIN DE MES</th>						
 					</tr>
 				</thead>
 				<tbody>
@@ -60,9 +60,9 @@
 					<tr ng-repeat="detalle in detalles">
 						<td>{{$index + 1}}</td>
 						<td>{{detalle.producto.nombre}}</td>
-						<td>{{detalle.producto.precio_referencial}}</td>
-						<td>{{detalle.cantidad}}</td>
-						<td>{{detalle.precio_total}}</td>						
+						<td>{{detalle.cantidad_magap}}</td>
+						<td>{{detalle.cantidad_vendida}}</td>
+						<td>{{detalle.cantidad_magap - detalle.cantidad_vendida}}</td>		
 					</tr>
 				</tbody>
 			</table>

@@ -761,18 +761,16 @@
 					});
 			}
 		}])
-		.controller('ReporteController', ['$scope', 'reporteService', function ($scope, reporteService) {
+		.controller('RComercialController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
 			$scope.asociacion = {};
 			$scope.detalles = [];
 			$scope.mostrar = false;
 			$scope.opciones = {};
-			$scope.meses = [{
-				id: 5,
-				nombre: 'Mayo'
-			},{
-				id: 6,
-				nombre: 'Junio'
-			}];
+	
+			reporteService.getMeses()
+				.then(function (data) {
+					$scope.meses = data;
+				});
 
 			reporteService.getAsociaciones()
 				.then(function (data) {
@@ -780,7 +778,7 @@
 				});
 
 
-			$scope.generar = function () {				
+			$scope.generar = function () {
 				reporteService.getVentasMensuales($scope.opciones.mes, $scope.opciones.asociacion)
 					.then(function (data) {
 						$scope.detalles = data;
@@ -793,6 +791,38 @@
 							}
 						}
 					});
+			}
+
+		}])
+		.controller('RKardexController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
+			$scope.asociacion = {};
+			$scope.detalles = [];
+			$scope.mostrar = false;
+			$scope.opciones = {};
+			
+			reporteService.getMeses()
+				.then(function (data) {
+					$scope.meses = data;
+				});
+
+			reporteService.getAsociaciones()
+				.then(function (data) {
+					$scope.asociaciones = data;
+				});
+
+			$scope.generar = function () {
+				reporteService.getVentasProducto($scope.opciones.asociacion, $scope.opciones.mes)
+					.then(function (data) {
+						$scope.detalles = data;
+						$scope.mostrar = true;
+						
+						for(var i = 0; i < $scope.asociaciones.length; i++) {
+							if($scope.asociaciones[i].id == $scope.opciones.asociacion) {
+								$scope.asociacion = $scope.asociaciones[i];
+								break;
+							}
+						}
+					});					
 			}
 
 		}]);

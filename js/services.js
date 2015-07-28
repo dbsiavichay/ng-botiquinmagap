@@ -100,11 +100,11 @@
 							producto:_detalle.producto.id,
 							venta: venta.id
 						}).success(function (detalle) {
-							_detalle.usos.forEach(function (_uso) {
+							_detalle.usos.forEach(function (_uso) {								
 								$http.post(usosVentaUrl, {
 									cantidad: _uso.cantidad,
-									enfermedad: _uso.enfermedad.id,
-									especie: _uso.especie.id,
+									enfermedad: _uso.enfermedad,
+									especie: _uso.especie,
 									detalle_venta: detalle.id
 								}).success(function () {
 									deferred.resolve();
@@ -471,6 +471,50 @@
 			}
 		}])
 		.factory('reporteService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
+			function getMeses () {
+				var deferred = $q.defer();
+				var meses = [{
+						id: 1,
+						nombre: 'Enero'
+					},{
+						id: 2,
+						nombre: 'Febrero'
+					},{
+						id: 3,
+						nombre: 'Marzo'
+					},{
+						id: 4,
+						nombre: 'Abril'
+					},{
+						id: 5,
+						nombre: 'Mayo'
+					},{
+						id: 6,
+						nombre: 'Junio'
+					},{
+						id: 7,
+						nombre: 'Julio'
+					},{
+						id: 8,
+						nombre: 'Agosto'
+					},{
+						id: 9,
+						nombre: 'Septiembre'
+					},{
+						id: 10,
+						nombre: 'Octubre'
+					},{
+						id: 11,
+						nombre: 'Noviembre'
+					},{
+						id: 12,
+						nombre: 'Diciembre'
+					}
+				];
+				deferred.resolve(meses);
+				return deferred.promise;
+			}
+
 			function getAsociaciones () {
 				var deferred = $q.defer();
 
@@ -480,7 +524,7 @@
 					});
 
 				return deferred.promise;	
-			}
+			}			
 
 			function getVentasMensuales(mes, asociacion) {
 				var deferred = $q.defer();				
@@ -535,11 +579,66 @@
 					});
 
 				return deferred.promise;
+			}			
+
+			function getVentasProducto (asociacion, mes) {
+				var deferred = $q.defer();
+				var reportes = [];
+
+				$http.get(baseUrl+'kardexs/?inicial=true&asociacion='+asociacion)
+					.success(function (data) {
+						var kardexs = data;						
+						var peticiones = kardexs.map(function (kardex) {
+							reportes.push({producto: kardex.producto, cantidad_magap: parseFloat(kardex.cantidad)});
+							return $http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes+'&producto='+kardex.producto);
+						});
+
+						$q.all(peticiones)
+							.then(function (data) {
+								data.forEach(function (detalleslist) {
+									var detalles = detalleslist.data;
+									var suma = 0;
+									detalles.forEach(function (detalle) {
+										suma+=parseFloat(detalle.cantidad);
+									});
+									
+									if(detalles.length > 0) {										
+										for(var i = 0; i < reportes.length; i++) {											
+											if(detalles[0].producto === reportes[i].producto) {
+												reportes[i].cantidad_vendida = suma;
+												break;
+											}
+										}
+									}									
+								});
+
+								var petsproductos = reportes.map(function (reporte) {
+									if(!reporte.cantidad_vendida) reporte.cantidad_vendida = 0;
+									return $http.get(baseUrl+'productos/'+reporte.producto)
+								});
+
+								$q.all(petsproductos)
+									.then(function (productos) {
+										reportes.forEach(function (reporte) {
+											for(var i = 0; i < productos.length; i++) {
+												if(reporte.producto === productos[i].data.id) {
+													reporte.producto = productos[i].data;
+													break;
+												}
+											}
+										});
+										deferred.resolve(reportes);
+									});
+							});		
+					});
+				return deferred.promise;				
 			}
 
 			return {
+				getMeses: getMeses,
 				getAsociaciones: getAsociaciones,
-				getVentasMensuales: getVentasMensuales
+				getVentasMensuales: getVentasMensuales,
+				getVentasProducto: getVentasProducto
 			}
 		}]);
 })();
