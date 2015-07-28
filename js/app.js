@@ -1,3 +1,9 @@
+$(function () {
+	$('.dropdown-toggle').on('click', function (event) {
+		event.preventDefault();
+	});
+});
+
 (function(){		
 	var app = angular.module('botiquin', [
 		'ngRoute',
