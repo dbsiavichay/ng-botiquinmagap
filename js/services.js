@@ -417,9 +417,11 @@
 
 			function editarInventario (inventario, kardex) {
 				var deferred = $q.defer();				
-				var _cantidad = kardex.tipo_transaccion == 1?
-					inventario.cantidad + kardex.cantidad:inventario.cantidad - kardex.cantidad;
+				inventario.cantidad = parseFloat(inventario.cantidad);
+				kardex.cantidad = parseFloat(kardex.cantidad);
 
+				var _cantidad = kardex.tipo_transaccion == 1?
+					inventario.cantidad + kardex.cantidad:inventario.cantidad - kardex.cantidad;								
 
 				$http.put(baseUrl+'inventarios/'+inventario.id+'/', {
 					cantidad: _cantidad,

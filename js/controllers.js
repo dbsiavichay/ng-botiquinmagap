@@ -754,7 +754,7 @@
 					});
 			}
 
-			function editar (inventario) {
+			function editar (inventario) {				
 				inventarioService.editar(inventario, $scope.kardex)
 					.then(function () {
 						$location.path('/inventarios');
@@ -815,7 +815,7 @@
 					.then(function (data) {
 						$scope.detalles = data;
 						$scope.mostrar = true;
-						
+
 						for(var i = 0; i < $scope.asociaciones.length; i++) {
 							if($scope.asociaciones[i].id == $scope.opciones.asociacion) {
 								$scope.asociacion = $scope.asociaciones[i];
