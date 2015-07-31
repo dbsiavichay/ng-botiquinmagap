@@ -1,0 +1,37 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title" id="myModalLabel">Registro de clientes</h4>
+</div>
+<div class="modal-body">
+	<div ng-show="error" class="alert alert-danger" role="alert">						
+		<strong>Error!!!</strong> {{mensajeError}}
+	</div>
+
+	<div class="form-horizontal">
+		<div class="form-group">
+		    <label class="col-sm-2 control-label">Cédula</label>
+		    <div class="col-sm-10">
+		    	<input ng-model="cliente.cedula" type="text" class="form-control" placeholder="Número de cédula">
+		    </div>
+		</div>
+		<div class="form-group">
+		    <label class="col-sm-2 control-label">Nombres</label>
+		    <div class="col-sm-10">
+		    	<input ng-model="cliente.nombre" type="text" class="form-control" placeholder="Nombres">
+		    </div>
+		</div>
+		<div class="form-group">
+		    <label class="col-sm-2 control-label">Apellidos</label>
+		    <div class="col-sm-10">
+		    	<input ng-model="cliente.apellido" type="text" class="form-control" placeholder="Apellidos">
+		    </div>
+		</div>
+	</div>	
+</div>
+<div class="modal-footer">
+	<button ng-click="cancelar()" class="btn btn-default">Cancelar</button>
+	<button ng-show="nuevo" ng-click="guardar()" class="btn btn-primary">Guardar</button>
+	<button ng-hide="nuevo"ng-click="editar()" class="btn btn-primary">Guardar</button>
+</div>

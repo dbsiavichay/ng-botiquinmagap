@@ -12,56 +12,57 @@
 
 		.factory('ventaService',['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
 			function getVentaPorId (id) {
-				var deferred = $q.defer();				
+				var deferred = $q.defer();
 
-				$http.get(baseUrl+'ventas/'+id)
-					.success(function (venta) {
-						$http.get(clienteUrl+venta.cliente)
-							.success(function (cliente) {
-								venta.cliente = cliente;							
-							});
+				var promesaVenta = $q(function (resolve, reject) {
+					$http.get(baseUrl+'ventas/'+id)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});
+				});
 
-						$http.get(detalleVentaUrl+'?venta='+venta.id)
-							.success(function (detalles) {
-								var petsProducto = detalles.map(function (detalle) {
-									return $http.get(baseUrl+'productos/'+detalle.producto);
-								});
+				var promesaCliente = promesaVenta
+					.then(function (data) {
+						return $q(function (resolve, reject) {
+							$http.get(baseUrl+'clientes/'+data.cliente)
+								.success(function (cliente) {
+									data.cliente = cliente;
+									resolve(data);
+								})
+								.error(function (error) {
+									reject(error);
+								});						
+						});						
+					});
 
-								$q.all(petsProducto).then(function (productos) {									
-									for(var i in detalles) {
-										for(var j in productos) {
-											if(detalles[i].producto === productos[j].data.id){
-												detalles[i].producto = productos[j].data;
-												break;
-											}
+				var promesaProductos = promesaCliente
+					.then(function (data) {
+						var detalles = data.detalles;
+						var peticiones = detalles.map(function (detalle) {
+							return $http.get(baseUrl+'productos/'+detalle.producto);
+						});
+
+						return $q.all(peticiones)
+							.then(function (alldata) {								
+								for(var i = 0; i < detalles.length; i++) {
+									for(var j = 0; j < alldata.length; j++) {
+										if(detalles[i].producto === alldata[j].data.id) {
+											detalles[i].producto = alldata[j].data;
+											break;
 										}
-									}
-
-									var petsUsos = detalles.map(function (detalle) {
-										return $http.get(baseUrl+'usosventa/?detalleventa='+detalle.id);
-									});
-
-									$q.all(petsUsos).then(function (usos) {
-										for(var i in detalles) {
-											detalles[i].usos = [];											
-											for(var j=0;j<usos.length;j++) {
-												var usos_detalle = usos[j].data;
-												window.usos = usos[0].data;
-												for(var k=0;k<usos_detalle.length;k++){													
-													if(detalles[i].id === usos_detalle[k].detalle_venta) {
-														detalles[i].usos.push(usos_detalle[k]);
-													}
-												}
-											}
-										}
-										deferred.resolve({
-											venta: venta,
-											detalles: detalles
-										});
-									});
-								});
+									}	
+								}
+								return data;
 							});
 					});
+			
+				promesaProductos
+					.then(function (data) {
+						deferred.resolve(data);
+					});				
 
 				return deferred.promise;
 			}
@@ -69,11 +70,69 @@
 			function getVentaTodos () {
 				var deferred = $q.defer();
 
-				$http.get(baseUrl+'ventas/')
-					.success(function (ventas) {						
-						deferred.resolve(ventas);
+				var promesa = $q(function (resolve, reject) {
+					$http.get(baseUrl+'ventas/')
+						.success(function (data) {						
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});	
+				});
+
+				var promesaClienteAsociacion = promesa
+					.then(function (data) {						
+						var solicitudes = [];
+
+						data.forEach(function (item) {
+							if(solicitudes.length === 0) {
+								solicitudes.push('clientes/'+item.cliente);
+								solicitudes.push('asociaciones/'+item.asociacion);								
+							}
+
+							if(solicitudes.indexOf('clientes/'+item.cliente) < 0){
+								solicitudes.push('clientes/'+item.cliente);
+							}
+
+							if(solicitudes.indexOf('asociaciones/'+item.asociacion) < 0){
+								solicitudes.push('asociaciones/'+item.asociacion);
+							}							
+						});
+
+						var peticiones = solicitudes.map(function (item) {
+							return $http.get(baseUrl+item);
+						});						
+
+						return $q.all(peticiones)
+							.then(function (alldata) {
+								data.forEach(function (item) {
+									for(var i = 0; i < alldata.length; i++){
+										if(alldata[i].config.url.indexOf('clientes') > -1) {
+											if(item.cliente === alldata[i].data.id) {
+												item.cliente = alldata[i].data;
+												break;
+											}
+										}										
+									}
+
+									for(var i = 0; i < alldata.length; i++){										
+										if(alldata[i].config.url.indexOf('asociaciones') > -1){
+											if(item.asociacion === alldata[i].data.id) {
+												item.asociacion = alldata[i].data;
+											}
+										}
+									}
+								});								
+								return data;
+							});						
 					});
 
+				promesaClienteAsociacion
+					.then(function (data) {
+						deferred.resolve(data);
+					});
+
+				
 				return deferred.promise;	
 			}
 
@@ -232,9 +291,39 @@
 				return deferred.promise;
 			}
 
+			function crearCliente(cliente) {
+				var deferred = $q.defer();
+
+				$http.post(baseUrl+'clientes/', cliente)
+					.success(function (data) {
+						deferred.resolve(data);
+					})
+					.error(function (error) {
+						deferred.reject(error);
+					});
+
+				return deferred.promise;
+			}
+
+			function editarCliente(cliente) {
+				var deferred = $q.defer();
+
+				$http.put(baseUrl+'clientes/'+cliente.id+'/', cliente)
+					.success(function (data) {
+						deferred.resolve(data);
+					})
+					.error(function (error) {
+						deferred.reject(error);
+					});
+
+				return deferred.promise;
+			}
+
 			return {
 				getPorId: getClientesPorId,
 				getTodos: getClientesTodos,
+				crear: crearCliente,
+				editar: editarCliente
 			}
 		}])
 		.factory('productoService', ['$http', '$q', function ($http, $q) {

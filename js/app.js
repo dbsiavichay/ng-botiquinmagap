@@ -19,6 +19,10 @@ $(function () {
 				templateUrl: 'views/lista-asociaciones.html',
 				controller: 'AsociacionController'
 			})
+			.when('/login', {
+				templateUrl: 'views/login.html',
+				controller: 'LoginController'
+			})
 			.when('/ventas', {
 				templateUrl: 'views/lista-ventas.html',
 				controller: 'VentasController'			
@@ -26,6 +30,10 @@ $(function () {
 			.when('/ventas/:id', {
 				templateUrl: 'views/venta.html',
 				controller: 'VentasController'
+			})
+			.when('/clientes', {
+				templateUrl: 'views/clientes.html',
+				controller: 'ClienteController'
 			})
 			.when('/compras', {
 				templateUrl: 'views/compras.html',

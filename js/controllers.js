@@ -1,6 +1,8 @@
 (function() {	
 	angular.module('botiquin.controllers', [])
+		.controller('LoginController', ['$scope', function ($scope) {
 
+		}])
 		.controller('AsociacionController',['$scope', '$http',function ($scope, $http){
 			$http.get('http://localhost:8000/asociaciones/?tecnico=2')
 				.success(function (data) {
@@ -16,46 +18,10 @@
 					});
 				});
 		}])
-		.controller('VentasController', ['$scope', '$http', '$q', 'ventaService', function ($scope, $http, $q, ventaService) {						
-			var petsCliente, petsAsociacion;
+		.controller('VentasController', ['$scope', '$q', 'ventaService', function ($scope, $q, ventaService) {			
 			ventaService.getTodos()
 				.then(function (data) {
-					$scope.ventas = data;
-					petsCliente = $scope.ventas.map(function (venta) {
-						venta.idCliente = venta.cliente;
-						return $http.get('http://127.0.0.1:8000/clientes/'+venta.idCliente);
-					});
-
-					petsAsociacion = $scope.ventas.map(function (venta) {
-						venta.idAsociacion = venta.asociacion;
-						return $http.get('http://127.0.0.1:8000/asociaciones/'+venta.idAsociacion);
-					});
-
-					$q.all(petsCliente).then(function (clientes) {
-						for(var i=0; i<$scope.ventas.length;i++){
-							var venta = $scope.ventas[i];
-							for(var j=0; i<clientes.length;j++){
-								var cliente = clientes[j];								
-								if(venta.idCliente === cliente.data.id){
-									venta.cliente = cliente.data;
-									break;
-								}
-							}
-						}
-					});
-
-					$q.all(petsAsociacion).then(function (asociaciones) {
-						for(var i=0; i<$scope.ventas.length;i++){
-							var venta = $scope.ventas[i];
-							for(var j=0; i<asociaciones.length;j++){
-								var asociacion = asociaciones[j];								
-								if(venta.idAsociacion === asociacion.data.id){
-									venta.asociacion = asociacion.data;
-									break;
-								}
-							}
-						}
-					});
+					$scope.ventas = data;					
 				});			
 		}])
 		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {
@@ -73,10 +39,10 @@
 			if(!isNaN(idVenta)){
 				ventaService.getPorId(idVenta)
 					.then(function (data) {
-						var fecha = data.venta.fecha;
-						data.venta.fecha = new Date(fecha);
-						data.venta.fecha.setDate(fecha.split('-')[2]);
-						$scope.venta = data.venta;						
+						var fecha = data.fecha;
+						data.fecha = new Date(fecha);
+						data.fecha.setDate(fecha.split('-')[2]);
+						$scope.venta = data;						
 						$scope.detalles = data.detalles;						
 						$scope.detalles.forEach(function (detalle) {
 							detalle.valorUnitario = detalle.precio_unitario;
@@ -104,7 +70,7 @@
 			$scope.seleccionarCliente = function () {			
 				$modal.open({					
 					templateUrl: 'partials/cliente-dialog.html',
-					controller: 'ClienteController',
+					controller: 'BuscarClienteController',
 				}).result.then(function (data) {
 					$scope.venta.cliente = data;
 				});				
@@ -199,6 +165,10 @@
 			}
 
 			$scope.seleccionarUsos = function ($index) {
+				$scope.detalles[$index].usos.forEach(function (uso) {
+
+				});
+
 				$modal.open({
 					templateUrl: 'partials/modal-uso.html',
 					controller: 'UsoController',
@@ -270,7 +240,7 @@
 				});
 			}				
 		}])
-		.controller('ClienteController', ['$scope', '$modalInstance', 'clienteService', function ($scope, $modalInstance, clienteService) {
+		.controller('BuscarClienteController', ['$scope', '$modalInstance', 'clienteService', function ($scope, $modalInstance, clienteService) {
 			var dataList = {};
 			$scope.error = false;
 			$scope.mensajeError = '';
@@ -330,6 +300,131 @@
 			$scope.cancelar = function () {			
 				$modalInstance.dismiss('cancel');
 			}		
+		}])
+		.controller('ClienteController', ['$scope', '$modal', 'clienteService', function ($scope, $modal, clienteService) {
+			var dataList = {};
+			$scope.error = false;
+			$scope.mensajeError = '';
+			$scope.empty = true;				
+
+			cargarClientes();
+
+			function cargarClientes () {
+				clienteService.getTodos()
+					.then(function (data) {
+						dataList = data;
+						$scope.clientes = data;					
+						if(data.length>0){
+							$scope.empty = false;
+						}
+					});
+			}
+
+			var contains = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+			};
+
+			var startsWith = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) === 0;
+			};		
+
+			var filter = function (){
+				$scope.empty = true;				
+				$scope.clientes = dataList.filter(function (obj) {
+					if(startsWith(obj.cedula, $scope.keyword) || contains(obj.nombre, $scope.keyword) || contains(obj.apellido, $scope.keyword)) {
+						return obj;
+					}
+				});
+
+				if($scope.clientes.length > 0){
+					$scope.empty = false;
+				}
+			}			
+						
+			$scope.filtrarClientes = function (event) {						
+				if(!event){
+					filter();							
+				}else if(event.keyCode === 13){
+					filter();
+				}						
+			};
+
+			$scope.abrirNuevo = function () {
+				$modal.open({					
+					templateUrl: 'partials/modal-cliente.html',
+					controller: 'ModalClienteController',
+					resolve: {
+						data : function () {
+							return null;
+						}
+					}
+				}).result.then(function (data) {
+					cargarClientes();
+				});
+			} 	
+
+			$scope.abrirEditar = function ($index) {
+				$modal.open({					
+					templateUrl: 'partials/modal-cliente.html',
+					controller: 'ModalClienteController',
+					resolve: {
+						data: function () {
+							return $scope.clientes[$index];
+						}
+					}
+				}).result.then(function (data) {
+					cargarClientes();
+				});
+			} 	
+		}])
+		.controller('ModalClienteController', ['$scope', '$modalInstance','clienteService', 'data', function ($scope, $modalInstance, clienteService, data) {
+			
+			$scope.cliente = {};			
+			$scope.nuevo = data!=null?false:true;
+			$scope.error = false;
+			$scope.mensajeError = '';
+
+			if(data) {
+				$scope.cliente = {
+					id: data.id,
+					cedula: data.cedula,
+					nombre: data.nombre,
+					apellido: data.apellido
+				}
+			}
+
+			function validarDatos () {
+				if(!$scope.cliente.cedula || !$scope.cliente.nombre || !$scope.cliente.apellido) return false;
+				return true;
+			}
+
+			$scope.guardar = function () {
+				if(validarDatos()) {					
+					clienteService.crear($scope.cliente)
+						.then(function (data) {
+							$modalInstance.close(data);
+						}); 
+				}else{
+					$scope.error = true;
+					$scope.mensajeError = 'Todos lo campos son requeridos.';
+				}
+			}
+
+			$scope.editar = function () {
+				if(validarDatos()) {					
+					clienteService.editar($scope.cliente)
+						.then(function (data) {
+							$modalInstance.close(data);
+						}); 
+				}else{
+					$scope.error = true;
+					$scope.mensajeError = 'Todos lo campos son requeridos.';
+				}
+			}
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}
 		}])
 		.controller('ProductoController', ['$scope', '$modalInstance', 'productoService', function ($scope, $modalInstance, productoService) {
 			var dataList = {};
