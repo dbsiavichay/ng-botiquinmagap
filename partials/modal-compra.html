@@ -1,0 +1,39 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title" id="myModalLabel">Detalle de compra</h4>
+</div>
+<div class="modal-body">
+	<div class="row">		
+		<div class="col-xs-4"><strong>Asociacion: </strong> {{compra.asociacion.nombre}}</div>
+		<div class="col-xs-4"><strong>Fecha: </strong> {{compra.fecha}}</div>
+		<div class="col-xs-4"><strong>Total Compra: </strong> {{compra.valor_total}}</div>	
+	</div>
+	
+	<hr>
+
+	<div class="table-responsive">
+		<table class="table table-bordered table-condensed">
+			<thead>
+				<tr>
+					<th>Cant.</th>
+					<th>Producto</th>
+					<th>C. Unit.</th>
+					<th>C. Tot.</th>					
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-repeat="detalle in compra.detalles">
+					<td>{{detalle.cantidad}}</td>
+					<td>{{detalle.producto.nombre}} - {{detalle.producto.presentacion}}</td>
+					<td>{{detalle.costo_unitario}}</td>
+					<td>{{detalle.costo_total}}</td>					
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">	
+	<button ng-click="cancelar()" type="button" class="btn btn-primary" data-dismiss="modal">Aceptar</button>
+</div>

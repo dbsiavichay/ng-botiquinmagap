@@ -34,7 +34,7 @@
 							return $scope.ventas[$index].id;
 						}
 					}
-				})
+				});
 			}			
 		}])
 		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {						
@@ -608,21 +608,34 @@
 				$modalInstance.dismiss('cancel');
 			}
 		}])
-		.controller('ComprasController', ['$scope', 'compraService', function ($scope, compraService) {
+		.controller('ComprasController', ['$scope', '$modal', 'compraService', function ($scope, $modal, compraService) {
 			$scope.compras = [];			
 
 			compraService.getTodos()
 				.then(function (data) {
 					$scope.compras = data;
 				});
+
+			$scope.ver = function ($index) {				
+				$modal.open({					
+					templateUrl: 'partials/modal-compra.html',
+					controller: 'ModalCompraController',
+					size: 'lg',
+					resolve: {
+						data: function () {							
+							return $scope.compras[$index].id;
+						}
+					}
+				});
+			}
 		}])
 		.controller('CompraController', ['$scope', '$modal', '$location', '$routeParams', 'compraService', 'asociacionService', function ($scope, $modal, $location, $routeParams, compraService, asociacionService) {
 			var idCompra = parseInt($routeParams.id);
 
 			$scope.asociaciones = [];
 			$scope.compra = {};
-			$scope.compra.fecha = new Date();
-			$scope.detalles = [];
+			$scope.compra.detalles = [];
+			$scope.compra.fecha = new Date();			
 			$scope.error = false;
 			$scope.mensajeError = '';
 
@@ -632,12 +645,6 @@
 						var fecha = data.compra.fecha;
 						data.compra.fecha = new Date(fecha);
 						data.compra.fecha.setDate(fecha.split('-')[2]);
-						$scope.compra = data.compra;						
-						$scope.detalles = data.detalles;						
-						$scope.detalles.forEach(function (detalle) {
-							detalle.valorUnitario = detalle.costo_unitario;
-							detalle.valorTotal = detalle.costo_total;
-						});						
 					});
 			}
 
@@ -658,16 +665,16 @@
 				}).result.then(function (data) {
 					$scope.error = false;
 
-					for(var i in $scope.detalles){
-						if($scope.detalles[i].producto.id === data.id){
+					for(var i in $scope.compra.detalles){
+						if($scope.compra.detalles[i].producto.id === data.id){
 							$scope.error = true;
 							$scope.mensajeError = 'El producto seleccionado ya se encuentra en la lista';	
 							return;
 						}
 					}					
 
-					$scope.detalles[$index].producto = data;
-					$scope.detalles[$index].valorUnitario = data.precio_referencial;
+					$scope.compra.detalles[$index].producto = data;
+					$scope.compra.detalles[$index].costo_unitario = data.precio_referencial;
 					$scope.calcularTotal($index);
 				});
 			}		
@@ -678,14 +685,14 @@
 				var detalle = {
 					cantidad: '1',
 					producto: '',
-					valorUnitario: '0',
-					valorTotal: '',					
+					costo_unitario: '0',
+					costo_total: '',					
 					esActual: true
 				};
 
-				if($scope.detalles.length > 0){
-					var prod = $scope.detalles[0].producto;
-					var valt = $scope.detalles[0].valorTotal;
+				if($scope.compra.detalles.length > 0){
+					var prod = $scope.compra.detalles[0].producto;
+					var valt = $scope.compra.detalles[0].costo_total;
 
 					if(!prod || !valt){
 						$scope.error = true;
@@ -694,39 +701,39 @@
 					}					
 				}
 
-				$scope.detalles.forEach(function (element) {
+				$scope.compra.detalles.forEach(function (element) {
 					element.esActual = false;
 				});
 
-				$scope.detalles.unshift(detalle);
+				$scope.compra.detalles.unshift(detalle);
 			}
 
 			$scope.editarDetalle = function ($index) {				
 				$scope.error = false;
 
-				for(var i=0; i < $scope.detalles.length; i++){
-					$scope.detalles[i].esActual = false;
-					if((!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal) && $index != i){
-						$scope.detalles.splice(i,1);
+				for(var i=0; i < $scope.compra.detalles.length; i++){
+					$scope.compra.detalles[i].esActual = false;
+					if((!$scope.compra.detalles[i].producto || !$scope.compra.detalles[i].costo_total) && $index != i){
+						$scope.compra.detalles.splice(i,1);
 						if(i < $index) $index = $index -1;
 						i = i-1;
 					}
 				}
 							
-				$scope.detalles[$index].esActual = true;
+				$scope.compra.detalles[$index].esActual = true;
 			}
 
 			$scope.eliminarDetalle = function ($index) {	
 				$scope.error = false;
-				$scope.detalles.splice($index, 1);				
+				$scope.compra.detalles.splice($index, 1);				
 			}		
 
 			$scope.calcularTotal = function ($index) {											
-				var p = $scope.detalles[$index].valorUnitario;
-				var c = $scope.detalles[$index].cantidad;
-				$scope.detalles[$index].valorTotal = p * c;
-				if(isNaN($scope.detalles[$index].valorTotal)){
-					$scope.detalles[$index].valorTotal = "0.00";
+				var p = $scope.compra.detalles[$index].costo_unitario;
+				var c = $scope.compra.detalles[$index].cantidad;
+				$scope.compra.detalles[$index].costo_total = p * c;
+				if(isNaN($scope.compra.detalles[$index].costo_total)){
+					$scope.compra.detalles[$index].costo_total = "0.00";
 				}	
 			}
 
@@ -740,15 +747,15 @@
 					return;
 				}
 
-				if($scope.detalles.length < 1){
+				if($scope.compra.detalles.length < 1){
 					$scope.error = true;	
 					$scope.mensajeError = 'No ha ingresado detalles de venta.';
 					return;
 				} 
 
-				for (var i in $scope.detalles) {
-					var detalle = $scope.detalles[i];
-					if(!detalle.producto || !detalle.valorTotal){
+				for (var i in $scope.compra.detalles) {
+					var detalle = $scope.compra.detalles[i];
+					if(!detalle.producto || !detalle.costo_total){
 						$scope.error = true;
 						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
 						return;
@@ -756,20 +763,29 @@
 				}
 
 				var total = 0;
-				for(var i in $scope.detalles){
-					var detalle = $scope.detalles[i];
-					total+=detalle.valorTotal;
+				for(var i in $scope.compra.detalles){
+					var detalle = $scope.compra.detalles[i];
+					total+=parseFloat(detalle.costo_total);
 				}
 
 				$scope.compra.valor_total = total;				
 
-				compraService.guardar({
-					compra: $scope.compra,
-					detalles: $scope.detalles,
-				}).then(function () {
-					$location.path('/compras');
-				});
+				compraService.crear($scope.compra)
+					.then(function () {
+						$location.path('/compras');
+					});
 			}
+		}])
+		.controller('ModalCompraController', ['$scope', '$modalInstance', 'compraService', 'data', function ($scope, $modalInstance, compraService, data) {
+			var id = data;
+			compraService.getPorId(id)
+				.then(function (data) {
+					$scope.compra = data;					
+				});
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}		
 		}])
 		.controller('InventariosController', ['$scope', '$modal', 'inventarioService', function ($scope, $modal, inventarioService) {
 			$scope.inventarios = [];

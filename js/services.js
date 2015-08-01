@@ -445,60 +445,114 @@
 		}])
 		.factory('compraService', ['$http', '$q', function ($http, $q) {
 			function getCompraPorId (id) {
-				var deferred = $q.defer();				
+				var deferred = $q.defer();
 
-				$http.get(baseUrl+'compras/'+id)
-					.success(function (compra) {						
-						$http.get(baseUrl+'detallescompra?compra='+compra.id)
-							.success(function (detalles) {
-								var peticiones = detalles.map(function (detalle) {
-									return $http.get(baseUrl+'productos/'+detalle.producto);
-								});
+				var promesaCompra = $q(function (resolve, reject) {
+					$http.get(baseUrl+'compras/'+id)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});
+				});
 
-								$q.all(peticiones).then(function (productos) {									
-									for(var i in detalles) {
-										for(var j in productos) {
-											if(detalles[i].producto === productos[j].data.id){
-												detalles[i].producto = productos[j].data;
-												break;
-											}
+				var promesaAsociacion = promesaCompra
+					.then(function (data) {						
+						return $q(function (resolve, reject) {
+							$http.get(baseUrl+'asociaciones/'+data.asociacion)
+								.success(function (asociacion) {
+									data.asociacion = asociacion;
+									resolve(data);
+								})
+								.error(function (error) {
+									reject(error);
+								});							
+						});
+					});
+						
+				var promesaProductos = promesaAsociacion
+					.then(function (data) {						
+						var detalles = data.detalles;
+						var peticiones = detalles.map(function (detalle) {
+							return $http.get(baseUrl+'productos/'+detalle.producto);
+						});
+
+						return $q.all(peticiones)
+							.then(function (alldata) {								
+								for(var i = 0; i < detalles.length; i++) {
+									for(var j = 0; j < alldata.length; j++) {
+										if(detalles[i].producto === alldata[j].data.id) {
+											detalles[i].producto = alldata[j].data;
+											break;
 										}
-									}
-									deferred.resolve({
-										compra: compra,
-										detalles: detalles
-									});
-								});
+									}	
+								}
+								return data;
 							});
 					});
+							
+				promesaProductos
+					.then(function (data) {
+						deferred.resolve(data);
+					});				
 
 				return deferred.promise;
 			}
 
 			function getCompraTodos () {
 				var deferred = $q.defer();
-				var peticiones = [];
-				$http.get(baseUrl+'compras/')
-					.success(function (compras) {
-						peticiones = compras.map(function (compra) {
-							return $http.get(baseUrl+'asociaciones/'+compra.asociacion);
-						});
 
-						$q.all(peticiones).then(function (asociaciones) {
-							for(var i=0;i<compras.length;i++) {
-								for(var j=0;j<asociaciones.length;j++) {
-									if(compras[i].asociacion === asociaciones[j].data.id) {
-										compras[i].asociacion = asociaciones[j].data;
-										break;
-									}
-								}
+				var promesa = $q(function (resolve, reject) {
+					$http.get(baseUrl+'compras/')
+						.success(function (data) {						
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});	
+				});
+
+				var promesaAsociacion = promesa
+					.then(function (data) {						
+						var solicitudes = [];
+
+						data.forEach(function (item) {
+							if(solicitudes.length === 0) {								
+								solicitudes.push('asociaciones/'+item.asociacion);								
 							}
-							deferred.resolve(compras);
-						});
+
+							if(solicitudes.indexOf('asociaciones/'+item.asociacion) < 0){
+								solicitudes.push('asociaciones/'+item.asociacion);
+							}							
+						});						
+
+						var peticiones = solicitudes.map(function (item) {
+							return $http.get(baseUrl+item);
+						});						
+
+						return $q.all(peticiones)
+							.then(function (alldata) {
+								data.forEach(function (item) {								
+									for(var i = 0; i < alldata.length; i++){																				
+										if(item.asociacion === alldata[i].data.id) {
+											item.asociacion = alldata[i].data;
+											break;
+										}										
+									}
+								});								
+								return data;
+							});						
 					});
 
+				promesaAsociacion
+					.then(function (data) {
+						deferred.resolve(data);
+					});
+
+				
 				return deferred.promise;	
-			}
+			}		
 
 			var formatFecha = function (fecha) {
 				var yyyy = fecha.getFullYear().toString();
@@ -507,32 +561,60 @@
 				return yyyy +'-'+(mm[1]?mm:"0"+mm[0]) +'-'+ (dd[1]?dd:"0"+dd[0]);
 			}
 
-			function guardar (data) {
+			function crear (compra) {					
 				var deferred = $q.defer();
-				$http.post(baseUrl+'compras/', {
-					fecha: formatFecha(data.compra.fecha),
-					valor_total: data.compra.valor_total,					
-					asociacion: data.compra.asociacion
-				}).success(function (compra) {					
-					data.detalles.forEach(function (_detalle) {
-						$http.post(baseUrl+'detallescompra/', {
-							cantidad: _detalle.cantidad,
-							costo_unitario: _detalle.valorUnitario,
-							costo_total: _detalle.valorTotal,
-							producto:_detalle.producto.id,
-							compra: compra.id
-						}).success(function (detalle) {
-							deferred.resolve();							
-						});
-					});					
+
+				var promesaCompra = $q(function (resolve, reject) {
+					$http.post(baseUrl+'compras/', {
+						fecha: formatFecha(compra.fecha),
+						valor_total: compra.valor_total,						
+						asociacion: compra.asociacion.id
+					})
+					.success(function (data) {
+						resolve(data);
+					})
+					.error(function (error) {						
+						reject(error);
+					});
 				});
+
+				var promesaDetalles = promesaCompra
+					.then(function (data) {
+						compra.detalles.forEach(function (detalle) {
+							detalle.compra = data.id;
+							detalle.producto = detalle.producto.id;
+							$http.post(baseUrl+'detallescompra/', detalle)
+								.success(function (_detalle) {	
+									$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id)
+										.success(function (data) {
+											if(data.length) {
+												var inventario = data[0];
+												inventario.cantidad = parseFloat(inventario.cantidad) + parseFloat(detalle.cantidad);
+												inventario.valor_unitario = parseFloat(detalle.costo_unitario);
+												$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
+											}else{
+												inventario = {
+													cantidad: detalle.cantidad,
+													valor_unitario: detalle.costo_unitario,
+													producto: detalle.producto,
+													asociacion: compra.asociacion.id											
+												}
+												$http.post(baseUrl+'inventarios/', inventario);
+											}
+										});
+								});
+						});
+
+						deferred.resolve();						
+					});				
+
 				return deferred.promise;
 			}
 			
 			return {	
 				getPorId: getCompraPorId,			
 				getTodos: getCompraTodos,
-				guardar: guardar
+				crear: crear
 			}
 		}])
 		.factory('inventarioService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
