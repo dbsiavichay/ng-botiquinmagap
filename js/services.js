@@ -10,7 +10,7 @@
 
 	angular.module('botiquin.services', [])
 
-		.factory('ventaService',['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
+		.factory('ventaService',['$http', '$q', 'asociacionService', 'clienteService', function ($http, $q, asociacionService, clienteService) {
 			function getVentaPorId (id) {
 				var deferred = $q.defer();
 
@@ -24,21 +24,25 @@
 						});
 				});
 
-				var promesaCliente = promesaVenta
+				var promesaClienteAsociacion = promesaVenta
 					.then(function (data) {
-						return $q(function (resolve, reject) {
-							$http.get(baseUrl+'clientes/'+data.cliente)
-								.success(function (cliente) {
-									data.cliente = cliente;
-									resolve(data);
-								})
-								.error(function (error) {
-									reject(error);
-								});						
-						});						
-					});
+						var peticionCliente = $http.get(baseUrl+'clientes/'+data.cliente);
+						var peticionAsociacion = $http.get(baseUrl+'asociaciones/'+data.asociacion);
 
-				var promesaProductos = promesaCliente
+						return $q.all([peticionCliente, peticionAsociacion])
+							.then(function (alldata) {
+								for(var i = 0; i < alldata.length; i++) {
+									if(alldata[i].config.url.indexOf('clientes') > -1) {
+										data.cliente = alldata[i].data;
+									}else{
+										data.asociacion = alldata[i].data;
+									}									
+								}
+								return data;	
+							});						
+						});
+
+				var promesaProductos = promesaClienteAsociacion
 					.then(function (data) {
 						var detalles = data.detalles;
 						var peticiones = detalles.map(function (detalle) {
@@ -59,7 +63,60 @@
 							});
 					});
 			
-				promesaProductos
+
+				var promesaUsos = promesaProductos
+					.then(function (data) {
+						var solicitudes = [];
+
+						data.detalles.forEach(function (detalle) {
+							detalle.usos.forEach(function (uso) {
+								if(solicitudes.length === 0) {
+									solicitudes.push('enfermedades/'+uso.enfermedad);
+									solicitudes.push('especies/'+uso.especie);								
+								}
+
+								if(solicitudes.indexOf('enfermedades/'+uso.enfermedad) < 0){
+									solicitudes.push('enfermedades/'+uso.enfermedad);
+								}
+
+								if(solicitudes.indexOf('especies/'+uso.especie) < 0){
+									solicitudes.push('especies/'+uso.especie);
+								}
+							});
+						});
+
+						var peticiones = solicitudes.map(function (item) {
+							return $http.get(baseUrl+item);
+						});						
+
+						return $q.all(peticiones)
+							.then(function (alldata) {
+								data.detalles.forEach(function (detalle) {
+									detalle.usos.forEach(function (uso) {
+										for(var i = 0; i < alldata.length; i++){
+											if(alldata[i].config.url.indexOf('enfermedades') > -1) {
+												if(uso.enfermedad === alldata[i].data.id) {
+													uso.enfermedad = alldata[i].data;
+													break;
+												}
+											}										
+										}
+
+										for(var i = 0; i < alldata.length; i++){										
+											if(alldata[i].config.url.indexOf('especies') > -1){
+												if(uso.especie === alldata[i].data.id) {
+													uso.especie = alldata[i].data;
+													break;
+												}
+											}
+										}										
+									});
+								});								
+								return data;
+							});
+					});
+
+				promesaUsos
 					.then(function (data) {
 						deferred.resolve(data);
 					});				
@@ -119,6 +176,7 @@
 										if(alldata[i].config.url.indexOf('asociaciones') > -1){
 											if(item.asociacion === alldata[i].data.id) {
 												item.asociacion = alldata[i].data;
+												break;
 											}
 										}
 									}
@@ -143,42 +201,73 @@
 				return yyyy +'-'+(mm[1]?mm:"0"+mm[0]) +'-'+ (dd[1]?dd:"0"+dd[0]);
 			}
 
-			function guardar (data) {
+			function crear (venta) {					
 				var deferred = $q.defer();
-				$http.post(baseUrl+'ventas/', {
-					fecha: formatFecha(data.venta.fecha),
-					valor_total: data.venta.valor_total,
-					cliente: data.venta.cliente.id,
-					asociacion: data.venta.asociacion
-				}).success(function (venta) {					
-					data.detalles.forEach(function (_detalle) {
-						$http.post(detalleVentaUrl, {
-							cantidad: _detalle.cantidad,
-							precio_unitario: _detalle.valorUnitario,
-							precio_total: _detalle.valorTotal,
-							producto:_detalle.producto.id,
-							venta: venta.id
-						}).success(function (detalle) {
-							_detalle.usos.forEach(function (_uso) {								
-								$http.post(usosVentaUrl, {
-									cantidad: _uso.cantidad,
-									enfermedad: _uso.enfermedad,
-									especie: _uso.especie,
-									detalle_venta: detalle.id
-								}).success(function () {
-									deferred.resolve();
-								});
-							});
-						});
-					});					
+
+				var promesaVenta = $q(function (resolve, reject) {
+					$http.post(baseUrl+'ventas/', {
+						fecha: formatFecha(venta.fecha),
+						valor_total: venta.valor_total,
+						cliente: venta.cliente.id,
+						asociacion: venta.asociacion.id
+					})
+					.success(function (data) {
+						resolve(data);
+					})
+					.error(function (error) {						
+						reject(error);
+					});
 				});
+
+				var promesaDetalles = promesaVenta
+					.then(function (data) {
+						venta.detalles.forEach(function (detalle) {
+							detalle.venta = data.id;
+							detalle.producto = detalle.producto.id;
+							$http.post(baseUrl+'detallesventa/', detalle)
+								.success(function (_detalle) {
+									detalle.usos.forEach(function (uso) {
+										uso.enfermedad = uso.enfermedad.id;
+										uso.especie = uso.especie.id;
+										uso.detalle_venta = _detalle.id;
+										$http.post(baseUrl+'usosventa/', uso);
+									});
+
+								$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+venta.asociacion.id)
+									.success(function (data) {
+										if(data.length) {
+											var inventario = data[0];
+											inventario.cantidad = parseFloat(inventario.cantidad) - parseFloat(detalle.cantidad);
+											inventario.valor_unitario = parseFloat(detalle.precio_unitario);
+											$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
+										}else{
+											inventario = {
+												cantidad: -detalle.cantidad,
+												valor_unitario: detalle.precio_unitario,
+												producto: detalle.producto,
+												asociacion: venta.asociacion.id											
+											}
+											$http.post(baseUrl+'inventarios/', inventario);
+										}
+									});
+								});
+						});
+
+						deferred.resolve();						
+					});				
+
 				return deferred.promise;
+			}			
+
+			function getClientePorCedula(cedula) {
+				return clienteService.getPorCedula(cedula);
 			}
 			
 			return {
 				getPorId: getVentaPorId,
 				getTodos: getVentaTodos,
-				guardar: guardar
+				crear: crear,				
+				getClientePorCedula: getClientePorCedula
 			}			
 		}])
 		.factory('asociacionService', ['$http', '$q',function ($http, $q) {
@@ -279,6 +368,16 @@
 
 				return deferred.promise;
 			}
+
+			function getClientePorCedula(cedula) {
+				var deferred = $q.defer();
+					$http.get(baseUrl+'clientes/?filtro='+cedula)
+						.success(function (data) {
+							if(data.length > 0) deferred.resolve(data[0]);
+							else deferred.resolve(null);
+						});
+				return deferred.promise;
+			}
 			
 			function getClientesTodos () {
 				var deferred = $q.defer();
@@ -321,6 +420,7 @@
 
 			return {
 				getPorId: getClientesPorId,
+				getPorCedula: getClientePorCedula,
 				getTodos: getClientesTodos,
 				crear: crearCliente,
 				editar: editarCliente

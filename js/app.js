@@ -24,7 +24,7 @@ $(function () {
 				controller: 'LoginController'
 			})
 			.when('/ventas', {
-				templateUrl: 'views/lista-ventas.html',
+				templateUrl: 'views/ventas.html',
 				controller: 'VentasController'			
 			})
 			.when('/ventas/:id', {

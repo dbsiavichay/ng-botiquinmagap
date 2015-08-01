@@ -2,11 +2,11 @@
 	<legend>Listado de clientes</legend>
 	<div class="row">
 		<div class="form-inline col-sm-11">
-			<div class="form-group form-group-sm">
+			<div class="form-group">
 				<label class="sr-only">Palabra clave</label>
 				<input ng-keyup="filtrarClientes($event)" ng-model="keyword" type="text" class="form-control" placeholder="Palabra clave">
 			</div>  						
-			<button ng-click="filtrarClientes()" class="btn btn-success btn-sm">Buscar</button>
+			<button ng-click="filtrarClientes()" class="btn btn-success">Buscar</button>
 		</div>	
 		<div class="col-sm-1">
 			<button ng-click="abrirNuevo()" class="btn btn-primary pull-right">Nuevo</button>

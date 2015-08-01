@@ -18,13 +18,26 @@
 					});
 				});
 		}])
-		.controller('VentasController', ['$scope', '$q', 'ventaService', function ($scope, $q, ventaService) {			
+		.controller('VentasController', ['$scope', '$modal', 'ventaService', function ($scope, $modal, ventaService) {			
 			ventaService.getTodos()
 				.then(function (data) {
 					$scope.ventas = data;					
-				});			
+				});
+
+			$scope.ver = function ($index) {				
+				$modal.open({					
+					templateUrl: 'partials/modal-venta.html',
+					controller: 'ModalVentaController',
+					size: 'lg',
+					resolve: {
+						data: function () {							
+							return $scope.ventas[$index].id;
+						}
+					}
+				})
+			}			
 		}])
-		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {
+		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {						
 			var idVenta = parseInt($routeParams.id);
 
 			//Declaracion de variables
@@ -32,22 +45,17 @@
 			$scope.mensajeError = '';
 			$scope.asociaciones = [];
 			$scope.venta = {};
-			$scope.venta.fecha = new Date();				
-			$scope.detalles = [];
+			$scope.venta.detalles = [];
+			$scope.venta.fecha = new Date();								
 
 			//Acciones constructoras
-			if(!isNaN(idVenta)){
+			if(idVenta > 0){				
 				ventaService.getPorId(idVenta)
 					.then(function (data) {
 						var fecha = data.fecha;
 						data.fecha = new Date(fecha);
 						data.fecha.setDate(fecha.split('-')[2]);
-						$scope.venta = data;						
-						$scope.detalles = data.detalles;						
-						$scope.detalles.forEach(function (detalle) {
-							detalle.valorUnitario = detalle.precio_unitario;
-							detalle.valorTotal = detalle.precio_total;
-						});						
+						$scope.venta = data;										
 					});
 			}
 
@@ -56,14 +64,28 @@
 					$scope.asociaciones = data;					
 				});
 			
-			//Funciones
-			$scope.cancelEnter = function ($event) {
+			
+			//Funciones	
+			$scope.cancelEnter = function($event) {
 				if($event.keyCode === 13) $event.preventDefault();
 			}
 
-			$scope.buscarCliente = function ($event) {
+			$scope.buscarCliente = function ($event) {				
 				if($event.keyCode === 13){
-					console.log('cliente');
+					$scope.error = false;
+					var cedula = $('#txtCedula').val();
+					if(!cedula) return;
+					ventaService.getClientePorCedula(cedula)
+						.then(function (data) {
+							if(!data) {
+								$scope.error = true;
+								$scope.mensajeError = 'No existe cliente con data <'+cedula+'>'
+								return;
+							}
+
+							$scope.venta.cliente = data;
+							$('#txtCedula').val('');
+						});
 				}
 			}
 
@@ -84,36 +106,36 @@
 				}).result.then(function (data) {
 					$scope.error = false;
 
-					for(var i in $scope.detalles){
-						if($scope.detalles[i].producto.id === data.id){
+					for(var i in $scope.venta.detalles){
+						if($scope.venta.detalles[i].producto.id === data.id){
 							$scope.error = true;
 							$scope.mensajeError = 'El producto seleccionado ya se encuentra en la lista';	
 							return;
 						}
 					}					
 
-					$scope.detalles[$index].producto = data;
-					$scope.detalles[$index].valorUnitario = data.precio_referencial;
+					$scope.venta.detalles[$index].producto = data;
+					$scope.venta.detalles[$index].precio_unitario = data.precio_referencial;
 					$scope.calcularTotal($index);
 				});
 			}		
 			
 			$scope.agregarDetalle = function () {
-				$scope.error = false;
+				$scope.error = false;				
 
 				var detalle = {
 					cantidad: '1',
 					producto: '',
-					valorUnitario: '0',
-					valorTotal: '',
+					precio_unitario: '0',
+					precio_total: '',
 					usos: [],
 					esActual: true
 				};
 
-				if($scope.detalles.length > 0){
-					var prod = $scope.detalles[0].producto;
-					var valt = $scope.detalles[0].valorTotal;
-					var emptyUsos = $scope.detalles[0].usos.length <= 0? true:false;
+				if($scope.venta.detalles.length > 0){
+					var prod = $scope.venta.detalles[0].producto;
+					var valt = $scope.venta.detalles[0].precio_total;
+					var emptyUsos = $scope.venta.detalles[0].usos.length <= 0? true:false;
 					if(!prod || !valt){
 						$scope.error = true;
 						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
@@ -128,57 +150,53 @@
 
 				}
 
-				$scope.detalles.forEach(function (element) {
+				$scope.venta.detalles.forEach(function (element) {
 					element.esActual = false;
 				});
 
-				$scope.detalles.unshift(detalle);
+				$scope.venta.detalles.unshift(detalle);				
 			}
 
 			$scope.editarDetalle = function ($index) {				
 				$scope.error = false;
 
-				for(var i=0; i < $scope.detalles.length; i++){
-					$scope.detalles[i].esActual = false;
-					if((!$scope.detalles[i].producto || !$scope.detalles[i].valorTotal) && $index != i){
-						$scope.detalles.splice(i,1);
+				for(var i=0; i < $scope.venta.detalles.length; i++){
+					$scope.venta.detalles[i].esActual = false;
+					if((!$scope.venta.detalles[i].producto || !$scope.venta.detalles[i].precio_total) && $index != i){
+						$scope.venta.detalles.splice(i,1);
 						if(i < $index) $index = $index -1;
 						i = i-1;
 					}
 				}
 							
-				$scope.detalles[$index].esActual = true;
+				$scope.venta.detalles[$index].esActual = true;
 			}
 
 			$scope.eliminarDetalle = function ($index) {	
 				$scope.error = false;
-				$scope.detalles.splice($index, 1);				
+				$scope.venta.detalles.splice($index, 1);				
 			}		
 
 			$scope.calcularTotal = function ($index) {											
-				var p = $scope.detalles[$index].valorUnitario;
-				var c = $scope.detalles[$index].cantidad;
-				$scope.detalles[$index].valorTotal = p * c;
-				if(isNaN($scope.detalles[$index].valorTotal)){
-					$scope.detalles[$index].valorTotal = "0.00";
+				var p = $scope.venta.detalles[$index].precio_unitario;
+				var c = $scope.venta.detalles[$index].cantidad;
+				$scope.venta.detalles[$index].precio_total = p * c;
+				if(isNaN($scope.venta.detalles[$index].precio_total)){
+					$scope.venta.detalles[$index].precio_total = "0.00";
 				}	
 			}
 
 			$scope.seleccionarUsos = function ($index) {
-				$scope.detalles[$index].usos.forEach(function (uso) {
-
-				});
-
 				$modal.open({
-					templateUrl: 'partials/modal-uso.html',
-					controller: 'UsoController',
+					templateUrl: 'partials/modal-usos.html',
+					controller: 'ModalUsoController',
 					resolve: {
 						data: function () {
-							return $scope.detalles[$index];
+							return $scope.venta.detalles[$index];
 						}
 					}					
 				}).result.then(function (data) {					
-					$scope.detalles[$index].usos = data;					
+					$scope.venta.detalles[$index].usos = data;					
 				});
 			}
 
@@ -187,9 +205,9 @@
 				$event.preventDefault;
 				$event.stopPropagation();
 				$scope.venta.fechaPopup = true;				
-			}			
+			}		
 
-			$scope.guardarVenta = function () {
+			function validarDatos () {
 				$scope.error = false;
 				if(!$scope.venta.asociacion) $scope.error = true;
 				if(!$scope.venta.cliente) $scope.error = true;
@@ -200,45 +218,58 @@
 					return;
 				}
 
-				if($scope.detalles.length < 1){
+				if($scope.venta.detalles.length < 1){
 					$scope.error = true;	
 					$scope.mensajeError = 'No ha ingresado detalles de venta.';
 					return;
 				} 
 
-				for (var i in $scope.detalles) {
-					var detalle = $scope.detalles[i];
-					if(!detalle.producto || !detalle.valorTotal){
+				for (var i in $scope.venta.detalles) {
+					var detalle = $scope.venta.detalles[i];
+					if(!detalle.producto || !detalle.precio_total){
 						$scope.error = true;
 						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
 						return;
 					}
 				}
 
-				for (var i in $scope.detalles) {
-					var detalle = $scope.detalles[i];
+				for (var i in $scope.venta.detalles) {
+					var detalle = $scope.venta.detalles[i];
 					if(detalle.usos.length < 1){
 						$scope.error = true;
 						$scope.mensajeError = 'El item ' + detalle.producto.nombre + ' no tiene USOS resgistrados';
 						return;
 					}
 				}
+				return $scope.error;
+			}	
 
+			$scope.guardarVenta = function () {
+				if(validarDatos()) return;
 				var total = 0;
-				for(var i in $scope.detalles){
-					var detalle = $scope.detalles[i];
-					total+=detalle.valorTotal;
+				for(var i in $scope.venta.detalles){
+					var detalle = $scope.venta.detalles[i];
+					total+=parseFloat(detalle.precio_total);
 				}
 
 				$scope.venta.valor_total = total;				
 
-				ventaService.guardar({
-					venta: $scope.venta,
-					detalles: $scope.detalles,
-				}).then(function () {
-					$location.path('/ventas');
+				ventaService.crear($scope.venta)
+					.then(function () {
+						$location.path('/ventas');
+					});
+			}
+		}])
+		.controller('ModalVentaController', ['$scope', '$modalInstance', 'ventaService', 'data', function ($scope, $modalInstance, ventaService, data) {
+			var id = data;
+			ventaService.getPorId(id)
+				.then(function (data) {
+					$scope.venta = data;					
 				});
-			}				
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}		
 		}])
 		.controller('BuscarClienteController', ['$scope', '$modalInstance', 'clienteService', function ($scope, $modalInstance, clienteService) {
 			var dataList = {};
@@ -491,7 +522,7 @@
 				$modalInstance.dismiss('cancel');
 			}	
 		}])
-		.controller('UsoController', ['$scope', '$modalInstance', 'enfermedadService', 'especieService', 'data', function ($scope, $modalInstance, enfermedadService, especieService, data) {
+		.controller('ModalUsoController', ['$scope', '$modalInstance', 'enfermedadService', 'especieService', 'data', function ($scope, $modalInstance, enfermedadService, especieService, data) {
 			$scope.detalle = data;
 			$scope.uso = {
 				cantidad: $scope.detalle.cantidad,
@@ -507,43 +538,15 @@
 			enfermedadService.getTodos()
 				.then(function (data) {
 					$scope.enfermedades = data;					
-
-					$scope.usos.forEach(function (uso) {						
-						for(var i = 0; i < $scope.enfermedades.length; i++) {
-							var enfermedad = $scope.enfermedades[i];					
-							if(enfermedad.id == uso.enfermedad){
-								uso.enfermedadSelected = enfermedad;
-								break;
-							}
-						}					
-					});
 				});
 
 			especieService.getTodos()
 				.then(function (data) {
 					$scope.especies = data;
-
-					$scope.usos.forEach(function (uso) {												
-						for(var i = 0; i < $scope.especies.length; i++) {
-							var especie = $scope.especies[i];
-							if(especie.id == uso.especie){
-								uso.especieSelected = especie;
-								break;
-							}
-						}
-					});
-				});
-
-			$scope.usos.forEach(function (element) {
-				element.esActual = false;
-			});			
+				});		
 
 			$scope.agregarUso = function () {				
-				$scope.error = false;	
-
-				$scope.usos.forEach(function (uso) {
-					uso.esActual = false;					
-				});				
+				$scope.error = false;				
 
 				for(propiedad in $scope.uso){						
 					if($scope.uso[propiedad]){
@@ -561,29 +564,13 @@
 
 				for (var i in $scope.usos) {
 					var uso = $scope.usos[i];						
-					if(uso.enfermedad.nombre===$scope.uso.enfermedad.nombre
-						&& uso.especie.nombre===$scope.uso.especie.nombre){
+					if(uso.enfermedad.id===$scope.uso.enfermedad.id
+						&& uso.especie.id===$scope.uso.especie.id){
 						$scope.error = true;
 						$scope.mensajeError = 'Los datos seleccionados ya se encuentran en la lista.';
 						return;
 					}
-				}				
-
-				for(var i = 0; i < $scope.enfermedades.length; i++) {
-					var enfermedad = $scope.enfermedades[i];					
-					if(enfermedad.id == $scope.uso.enfermedad){
-						$scope.uso.enfermedadSelected = enfermedad;
-						break;
-					}
-				}
-
-				for(var i = 0; i < $scope.especies.length; i++) {
-					var especie = $scope.especies[i];
-					if(especie.id == $scope.uso.especie){
-						$scope.uso.especieSelected = especie;
-						break;
-					}
-				}
+				}								
 
 				$scope.usos.push($scope.uso);				
 				$scope.uso = {
@@ -887,7 +874,6 @@
 						}
 					});
 			}
-
 		}])
 		.controller('RKardexController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
 			$scope.asociacion = {};
@@ -919,6 +905,5 @@
 						}
 					});					
 			}
-
 		}]);
 })();
