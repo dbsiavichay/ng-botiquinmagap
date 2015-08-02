@@ -792,26 +792,18 @@
 			$scope.error = false;
 			$scope.mensajeError = '';
 
-			inventarioService.getTodos()
+			inventarioService.getTodos(1)
 				.then(function (data) {
 					$scope.inventarios = data;
 				});
 		}])
 		.controller('InventarioController', ['$scope', '$modal', '$location', 'inventarioService', function ($scope, $modal, $location, inventarioService) {
-			$scope.kardex = {};
-			$scope.kardex.fecha = new Date();
-			$scope.asociaciones = [];
+			$scope.inventario = {};
+			$scope.inventario.es_inicial = true;			
+			$scope.inventario.caducidad = [];
+			$scope.caducidad = {};
 			$scope.error = false;
 			$scope.mensajeError = '';
-
-			$scope.transacciones = [
-				'Compra',
-				'Venta',
-				'Inventario inicial',
-				'Devolución',
-				'Regalo',
-				'Otros'
-			];
 
 			inventarioService.getAsociaciones()
 				.then(function (data) {
@@ -824,40 +816,107 @@
 					controller: 'ProductoController',
 					size: 'lg'
 				}).result.then(function (data) {			
-					$scope.kardex.producto = data;
-					$scope.kardex.valor_unitario = data.precio_referencial;
+					$scope.inventario.producto = data;
+					$scope.inventario.valor_unitario = data.precio_referencial;
 					$scope.calcularTotal();
 				});
 			}
 
 			$scope.calcularTotal = function () {																		
-				$scope.kardex.valor_total = $scope.kardex.cantidad * $scope.kardex.valor_unitario;
-				if(isNaN($scope.kardex.valor_total)){
-					$scope.kardex.valor_total = 0;
+				$scope.inventario.valor_total = $scope.inventario.cantidad * $scope.inventario.valor_unitario;
+				if(isNaN($scope.inventario.valor_total)){
+					$scope.inventario.valor_total = 0;
 				}	
 			}
 
+			$scope.agregarCaducidad = function () {
+				$scope.error = false;
+				if(!validarCampos()) {
+					$scope.error = true;
+					$scope.mensajeError = 'Antes debe registrar los campos a su izquierda.';
+					return;
+				}
+
+				if(!$scope.caducidad.cantidad) $scope.error = true;
+				if(parseFloat($scope.caducidad.cantidad) <= 0) $scope.error = true;
+				if(!$scope.caducidad.fecha) $scope.error = true;				
+
+				if($scope.error) {					
+					$scope.mensajeError = 'Los campos de CANTIDAD y FECHA son requeridos.';	
+					return;
+				}
+				
+				$scope.inventario.caducidad.push($scope.caducidad);
+				$scope.caducidad = {};
+			}
+
+			$scope.removerCaducidad = function ($index) {
+				$scope.inventario.caducidad.splice($index, 1);
+			}
+
+			function validarCampos () {
+				$scope.error = false;				
+				if(!$scope.inventario.asociacion) $scope.error = true;
+				if(!$scope.inventario.es_inicial) $scope.error = true;				
+				if(!$scope.inventario.cantidad) $scope.error = true;
+				if(parseFloat($scope.inventario.cantidad) <= 0) $scope.error = true;
+				if(!$scope.inventario.producto) $scope.error = true;
+				if(!$scope.inventario.valor_unitario) $scope.error = true;
+
+				if($scope.error) {
+					$scope.mensajeError = 'Todos los campos son obligatorios';
+					return false;
+				}
+				return true;
+			}
+
 			$scope.guardar = function() {
-				inventarioService.getPorAsociacionProducto($scope.kardex.asociacion, $scope.kardex.producto.id)
+				if(!validarCampos()) return;
+
+				if(!$scope.inventario.caducidad.length) {
+					$scope.error = true;
+					$scope.mensajeError = 'Debe registrar la caducidad de los productos.';
+					return;	
+				}
+
+				$scope.inventario.cantidad_inicial = $scope.inventario.cantidad;
+
+				inventarioService.getPorAsociacionProducto($scope.inventario.asociacion.id, $scope.inventario.producto.id)
 					.then(function (data) {
-						if(!data.hasOwnProperty('id')) crear();
-						else editar(data);
+						if(!data.hasOwnProperty('id')) { crear();}
+						else {
+							$scope.error = true;
+							$scope.mensajeError = 'El producto selccionado ya esta registrado en el invetario.';
+						//editar(data);
+						}
+							
 					});				
 			}
 
 			function crear () {
-				inventarioService.guardar($scope.kardex)
+				inventarioService.crear($scope.inventario)
 					.then(function () {
 						$location.path('/inventarios');
 					});
 			}
 
 			function editar (inventario) {				
-				inventarioService.editar(inventario, $scope.kardex)
+				inventarioService.editar(inventario, $scope.inventario)
 					.then(function () {
 						$location.path('/inventarios');
 					});
 			}
+		}])
+		.controller('ModalInventarioController', ['$scope', '$modalInstance', 'compraService', 'data', function ($scope, $modalInstance, compraService, data) {
+			var id = data;
+			compraService.getPorId(id)
+				.then(function (data) {
+					$scope.compra = data;					
+				});
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}		
 		}])
 		.controller('RComercialController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
 			$scope.asociacion = {};

@@ -634,54 +634,114 @@
 				return deferred.promise;	
 			}
 
-			function getInventarioTodos() {
+			function getInventarioTodos(asociacion) {
 				var deferred = $q.defer();
-				
-				$http.get(baseUrl+'inventarios/')
-					.success(function (inventarios) {
-						var peticiones = inventarios.map(function (inventario) {
+
+				var promesaInventario = $q(function (resolve, reject) {
+					$http.get(baseUrl+'inventarios/?asociacion'+asociacion)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});
+				});
+
+				var promesaProductos = promesaInventario
+					.then(function (data) {
+						var peticiones = data.map(function (inventario) {
 							return $http.get(baseUrl+'productos/'+inventario.producto);
 						});
 
-						$q.all(peticiones).then(function (productos) {
-							for(var i = 0; i < inventarios.length; i++) {
-								for(var j = 0; j < productos.length; j++) {
-									if(inventarios[i].producto == productos[j].data.id) {
-										inventarios[i].producto = productos[j].data;
-										break;
+						return $q.all(peticiones)
+							.then(function (alldata) {
+								for(var i = 0; i < data.length; i++) {
+									for(var j = 0; j < alldata.length; j++) {
+										if(data[i].producto == alldata[j].data.id) {
+											data[i].producto = alldata[j].data;
+											break;
+										}
 									}
-								}
-							}							
-							deferred.resolve(inventarios);						
-						})
+								}							
+								return data;
+							});
 					});
+				
+				var promesaCaducidad = promesaProductos
+					.then(function (data) {
+						var peticiones = data.map(function (inventario) {
+							return $http.get(baseUrl+'caducidad/?producto='+inventario.producto.id+'&asociacion='+asociacion);
+						});
+
+						return $q.all(peticiones)
+							.then(function (alldata) {
+								console.log(alldata);
+								data.forEach(function (inventario) {
+									for(var i = 0; i < alldata.length; i++){
+										if(alldata[i].config.url.indexOf('producto='+inventario.producto.id) > -1) {
+											var caducidades = alldata[i].data;
+											var dias = 1000000000000000;
+											for(var j=0; j < caducidades.length; j++) {
+												var hoy = new Date();
+												var caducidad = new Date(caducidades[j].fecha);
+												var dif = caducidad.getTime() - hoy.getTime();
+												var days = Math.round(dif/(1000 * 60 * 60 * 24));												
+												if(days < dias) dias = days;
+											}
+
+											if(dias < 90 ) inventario.clase = 'info';
+											if(dias < 60 ) inventario.clase = 'warning';
+											if(dias < 30 ) inventario.clase = 'danger';
+											break;
+										}
+									}
+								});
+								return data;
+							});
+					});
+
+					promesaCaducidad
+						.then(function (data) {
+							deferred.resolve(data);
+						});
 
 				return deferred.promise;	
 			}
 
 
-			function guardarInventario (kardex) {
+			function crearInventario (inventario) {
 				var deferred = $q.defer();
-				
-				$http.post(baseUrl+'inventarios/', {
-					cantidad: kardex.cantidad,
-					valor_unitario: kardex.valor_unitario,					
-					producto: kardex.producto.id,
-					asociacion: kardex.asociacion
-				}).success(function (inventario) {
-					$http.post(baseUrl+'kardexs/', {
-						fecha: formatFecha(kardex.fecha),
-						tipo_transaccion: kardex.tipo_transaccion,
-						descripcion: kardex.transaccion + ' - ' + kardex.descripcion,
-						cantidad: kardex.cantidad,
-						valor_unitario: kardex.valor_unitario,
-						saldo: kardex.cantidad,
-						producto: kardex.producto.id,
-						asociacion: kardex.asociacion
-					}).success(function () {
-						deferred.resolve();
-					})
+				inventario.asociacion = inventario.asociacion.id;
+				inventario.producto = inventario.producto.id;
+
+				var promesaInventario = $q(function (resolve, reject) {
+					$http.post(baseUrl+'inventarios/', inventario)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});
 				});
+
+				var promesaCaducidad = promesaInventario
+					.then(function (data) {
+						var peticiones = inventario.caducidad.map(function (item) {							
+							return $http.post(baseUrl+'caducidad/', {
+								fecha: formatFecha(item.fecha),
+								cantidad: item.cantidad,
+								producto: data.producto,
+								asociacion: data.asociacion
+							});
+						});
+
+						return $q.all(peticiones);
+					});
+
+				promesaCaducidad
+					.then(function (data) {
+						deferred.resolve();
+					});
 
 				return deferred.promise;		
 			}
@@ -718,14 +778,7 @@
 			}
 
 			function getAsociaciones () {
-				var deferred = $q.defer();
-
-				asociacionService.getTodos()
-					.then(function (data) {
-						deferred.resolve(data)
-					});
-
-				return deferred.promise;	
+				return asociacionService.getTodos();	
 			}
 
 			var formatFecha = function (fecha) {
@@ -739,7 +792,7 @@
 				getAsociaciones: getAsociaciones,
 				getPorAsociacionProducto: getInventarioPorAsociacionProducto,
 				getTodos: getInventarioTodos,
-				guardar: guardarInventario,
+				crear: crearInventario,
 				editar: editarInventario
 			}
 		}])
