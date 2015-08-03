@@ -1161,7 +1161,7 @@
 				$modalInstance.dismiss('cancel');
 			}		
 		}])
-		.controller('RComercialController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
+		.controller('RComercialController', ['$scope','reporteService', function ($scope, reporteService) {
 			$scope.asociacion = {};
 			$scope.detalles = [];
 			$scope.mostrar = false;
@@ -1193,7 +1193,7 @@
 					});
 			}
 		}])
-		.controller('RKardexController', ['$scope', '$routeParams','reporteService', function ($scope, $routeParams, reporteService) {
+		.controller('RKardexController', ['$scope','reporteService', function ($scope, reporteService) {
 			$scope.asociacion = {};
 			$scope.detalles = [];
 			$scope.mostrar = false;
@@ -1221,6 +1221,26 @@
 								break;
 							}
 						}
+					});					
+			}
+		}])
+		.controller('RGeneralController', ['$scope','reporteService', function ($scope, reporteService) {
+			
+			$scope.detalles = [];
+			$scope.mostrar = false;
+			$scope.opciones = {};
+			
+			reporteService.getMeses()
+				.then(function (data) {
+					$scope.meses = data;
+				});
+
+
+			$scope.generar = function () {
+				reporteService.getReporteGeneral($scope.opciones.mes)
+					.then(function (data) {
+						$scope.detalles = data;
+						$scope.mostrar = true;						
 					});					
 			}
 		}]);

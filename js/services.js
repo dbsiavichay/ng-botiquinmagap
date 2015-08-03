@@ -1036,11 +1036,40 @@
 				return deferred.promise;				
 			}
 
+			function getReporteGeneral(mes) {
+				var deferred = $q.defer();
+				var reportes = [];
+
+				getAsociaciones()
+					.then(function (asociaciones) {
+
+						asociaciones.forEach(function (asociacion) {
+							getVentasMensuales(mes, asociacion.id)
+								.then(function (detalles) {
+									var suma = 0;
+									detalles.forEach(function (detalle) {
+										suma+=parseFloat(detalle.precio_total);
+									});
+
+									reportes.push({
+										asociacion: asociacion,
+										total_vendido: suma
+									});									
+								});
+						});
+
+						deferred.resolve(reportes);
+
+					});
+					return deferred.promise;
+			}
+
 			return {
 				getMeses: getMeses,
 				getAsociaciones: getAsociaciones,
 				getVentasMensuales: getVentasMensuales,
-				getCardexInicial: getCardexInicial
+				getCardexInicial: getCardexInicial,
+				getReporteGeneral: getReporteGeneral
 			}
 		}]);
 })();

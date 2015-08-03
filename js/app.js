@@ -57,6 +57,9 @@ $(function () {
 			.when('/reportekardex', {
 				templateUrl: 'views/reporte-kardex.html'				
 			})
+			.when('/reportegeneral', {
+				templateUrl: 'views/reporte-general.html'				
+			})
 			.otherwise({
 				redirectTo: '/'
 			});

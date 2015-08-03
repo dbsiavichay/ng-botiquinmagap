@@ -1,0 +1,47 @@
+<div ng-controller="RGeneralController">
+	<fieldset>
+		<legend>Reporte General Mensual</legend>
+		<div class="form-inline">		  	
+		  	<div class="form-group">
+		    	<label>Mes</label>
+		    	<select ng-model="opciones.mes" class="form-control">
+		    		<option value="">-- Seleccionar --</option>	
+		    		<option ng-repeat="mes in meses" value="{{mes.id}}">{{mes.nombre}}</option>
+		    	</select>
+		  	</div>	  	
+		  	<button ng-click="generar()" class="btn btn-primary">Generar</button>
+		</div>
+		<div ng-show="mostrar">
+			<hr>			
+			<div class="table-responsive">
+				<table class="table table-bordered table-condensed">
+					<thead>
+						<tr>
+							<th>ITEM</th>
+							<th>NOMBRE</th>
+							<th>CANTON</th>
+							<th>PARROQUIA</th>
+							<th>SECTOR</th>
+							<th>GEOREFERENCIACION</th>
+							<th>RESPONSABLE</th>
+							<th>TOTAL INGRESOS</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr ng-hide="detalles.length"><td colspan="5">No existen registros</td></tr>
+						<tr ng-repeat="detalle in detalles">
+							<td>{{$index + 1}}</td>
+							<td>{{detalle.asociacion.nombre}}</td>
+							<td>{{detalle.asociacion.ubicacion.canton}}</td>
+							<td>{{detalle.asociacion.ubicacion.parroquia}}</td>
+							<td>{{detalle.asociacion.ubicacion.sector}}</td>
+							<td>{{detalle.asociacion.latitud}}, {{detalle.asociacion.longitud}}</td>
+							<td>{{detalle.asociacion.responsable}}</td>
+							<td><strong>{{detalle.total_vendido}}</strong></td>		
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</fieldset>
+</div>
