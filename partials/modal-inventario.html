@@ -1,0 +1,51 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title" id="myModalLabel">Búsqueda de productos</h4>
+</div>
+<div class="modal-body">
+	<div class="form-inline">
+		<div class="form-group">
+			<label class="sr-only">Palabra clave</label>
+			<input ng-keyup="filtrarProductos($event)" ng-model="keyword" type="text" class="form-control" placeholder="Palabra clave">
+		</div>  						
+		<button ng-click="filtrarProductos()" class="btn btn-success">Buscar</button>
+	</div>
+
+	<hr>
+
+	<div ng-show="error" class="alert alert-danger" role="alert">						
+		<strong>Error!</strong> {{mensajeError}}
+	</div>
+
+	<div class="table-responsive">
+		<table class="table table-striped table-condensed table-hover">
+			<thead>
+				<tr>
+					<th>CANT</th>
+					<th>NOMBRE</th>
+					<th>COMPUESTO</th>
+					<th>PRESENTACION</th>
+					<th>PRECIO</th>					
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-hide="inventarios.length">
+					<td colspan="5">No existen registros</td>
+				</tr>
+				<tr ng-repeat="inventario in inventarios" ng-class="{success: $index === selected}"  ng-click="seleccionar($index)">
+					<td>{{inventario.cantidad}}</td>
+					<td>{{inventario.producto.nombre}}</td>
+					<td>{{inventario.producto.compuesto}}</td>
+					<td>{{inventario.producto.presentacion}}</td>
+					<td>{{inventario.valor_unitario}}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">
+	<button ng-click="cancelar()" type="button" class="btn btn-default">Cancelar</button>
+	<button ng-click="ok()" type="button" class="btn btn-primary" data-dismiss="modal">Aceptar</button>
+</div>

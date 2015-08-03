@@ -18,7 +18,7 @@
 				</thead>
 				<tbody>
 					<tr ng-hide="inventarios.length > 0"><td colspan="5">No existen registros</td></tr>
-					<tr ng-repeat="inventario in inventarios" class="{{inventario.clase}}">
+					<tr ng-repeat="inventario in inventarios" ng-class="{danger: inventario.dias < 30, warning: inventario.dias < 60, info: inventario.dias < 90}">
 						<td>{{inventario.cantidad}}</td>
 						<td>{{inventario.producto.nombre}}</td>
 						<td>{{inventario.valor_unitario}}</td>					

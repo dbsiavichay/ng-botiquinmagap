@@ -124,11 +124,11 @@
 				return deferred.promise;
 			}
 
-			function getVentaTodos () {
+			function getVentaTodos (asociacion) {
 				var deferred = $q.defer();
 
 				var promesa = $q(function (resolve, reject) {
-					$http.get(baseUrl+'ventas/')
+					$http.get(baseUrl+'ventas/?asociacion='+asociacion)
 						.success(function (data) {						
 							resolve(data);
 						})
@@ -223,7 +223,7 @@
 					.then(function (data) {
 						venta.detalles.forEach(function (detalle) {
 							detalle.venta = data.id;
-							detalle.producto = detalle.producto.id;
+							detalle.producto = detalle.inventario.producto.id;
 							$http.post(baseUrl+'detallesventa/', detalle)
 								.success(function (_detalle) {
 									detalle.usos.forEach(function (uso) {
@@ -233,23 +233,45 @@
 										$http.post(baseUrl+'usosventa/', uso);
 									});
 
-								$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+venta.asociacion.id)
-									.success(function (data) {
-										if(data.length) {
-											var inventario = data[0];
-											inventario.cantidad = parseFloat(inventario.cantidad) - parseFloat(detalle.cantidad);
-											inventario.valor_unitario = parseFloat(detalle.precio_unitario);
-											$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
-										}else{
-											inventario = {
-												cantidad: -detalle.cantidad,
-												valor_unitario: detalle.precio_unitario,
-												producto: detalle.producto,
-												asociacion: venta.asociacion.id											
+									$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+venta.asociacion.id)
+										.success(function (data) {
+											if(data.length) {
+												var inventario = data[0];
+												inventario.cantidad = parseFloat(inventario.cantidad) - parseFloat(detalle.cantidad);
+												//inventario.valor_unitario = parseFloat(detalle.precio_unitario);
+												$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
+											}else{
+												inventario = {
+													cantidad: -detalle.cantidad,
+													valor_unitario: detalle.precio_unitario,
+													producto: detalle.producto,
+													asociacion: venta.asociacion.id
+												}
+												$http.post(baseUrl+'inventarios/', inventario);
 											}
-											$http.post(baseUrl+'inventarios/', inventario);
-										}
-									});
+										});
+
+									detalle.caducidad.forEach(function (caducidad) {
+										for(var i = 0; i < detalle.inventario.caducidades.length; i++) {
+											var fechas = detalle.inventario.caducidades;					
+											var fecha = new Date(fechas[i].fecha);
+											fecha.setDate(fechas[i].fecha.split('-')[2]);
+
+											var igual = true;
+											if(caducidad.fecha.getDate() != fecha.getDate())  igual = false;
+											if(caducidad.fecha.getMonth() != fecha.getMonth()) igual = false;
+											if(caducidad.fecha.getFullYear() != fecha.getFullYear()) igual = false;
+
+											if(igual){
+												var caducidadbase = fechas[i];
+												caducidadbase.cantidad = parseFloat(caducidadbase.cantidad) - parseFloat(caducidad.cantidad);
+												if(caducidadbase.cantidad > 0) 
+													$http.put(baseUrl+'caducidad/'+caducidadbase.id+'/', caducidadbase);
+												else
+													$http.delete(baseUrl+'caducidad/'+caducidadbase.id+'/');											
+											}
+										}																			
+									});									
 								});
 						});
 
@@ -262,12 +284,17 @@
 			function getClientePorCedula(cedula) {
 				return clienteService.getPorCedula(cedula);
 			}
+
+			function getAsociaciones () {
+				return asociacionService.getTodos();
+			}
 			
 			return {
 				getPorId: getVentaPorId,
 				getTodos: getVentaTodos,
+				getClientePorCedula: getClientePorCedula,
+				getAsociaciones: getAsociaciones,
 				crear: crear,				
-				getClientePorCedula: getClientePorCedula
 			}			
 		}])
 		.factory('asociacionService', ['$http', '$q',function ($http, $q) {
@@ -674,8 +701,7 @@
 						});
 
 						return $q.all(peticiones)
-							.then(function (alldata) {
-								console.log(alldata);
+							.then(function (alldata) {								
 								data.forEach(function (inventario) {
 									for(var i = 0; i < alldata.length; i++){
 										if(alldata[i].config.url.indexOf('producto='+inventario.producto.id) > -1) {
@@ -689,9 +715,8 @@
 												if(days < dias) dias = days;
 											}
 
-											if(dias < 90 ) inventario.clase = 'info';
-											if(dias < 60 ) inventario.clase = 'warning';
-											if(dias < 30 ) inventario.clase = 'danger';
+											inventario.dias = dias;
+											inventario.caducidades = caducidades;											
 											break;
 										}
 									}
@@ -790,7 +815,7 @@
 
 			return {
 				getAsociaciones: getAsociaciones,
-				getPorAsociacionProducto: getInventarioPorAsociacionProducto,
+				getPorAsociacionProducto: getInventarioPorAsociacionProducto,				
 				getTodos: getInventarioTodos,
 				crear: crearInventario,
 				editar: editarInventario

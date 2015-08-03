@@ -19,10 +19,25 @@
 				});
 		}])
 		.controller('VentasController', ['$scope', '$modal', 'ventaService', function ($scope, $modal, ventaService) {			
-			ventaService.getTodos()
+			$scope.asociacionSelected = {};			
+
+			ventaService.getAsociaciones()
 				.then(function (data) {
-					$scope.ventas = data;					
+					$scope.asociaciones = data;
+					$scope.asociacionSelected = data[0];
+					ventaService.getTodos($scope.asociacionSelected.id)
+						.then(function (data) {
+							$scope.ventas = data;					
+						});
 				});
+
+			$scope.cargarVentas = function () {
+				ventaService.getTodos($scope.asociacionSelected.id)
+					.then(function (data) {
+						$scope.ventas = data;					
+					});
+			}
+
 
 			$scope.ver = function ($index) {				
 				$modal.open({					
@@ -49,7 +64,7 @@
 			$scope.venta.fecha = new Date();								
 
 			//Acciones constructoras
-			if(idVenta > 0){				
+			if(!isNaN(idVenta)){				
 				ventaService.getPorId(idVenta)
 					.then(function (data) {
 						var fecha = data.fecha;
@@ -98,24 +113,41 @@
 				});				
 			}
 
-			$scope.seleccionarProducto = function ($index) {
+			$scope.seleccionarProducto = function ($index) {				
+				if(!$scope.venta.asociacion) {
+					$scope.error = true;
+					$scope.mensajeError = 'Es necesario especificar la ASOCIACION en el encabezado.';
+					return;
+				}
+
 				$modal.open({
-					templateUrl: 'partials/producto-dialog.html',
-					controller: 'ProductoController',
-					size: 'lg'
+					templateUrl: 'partials/modal-inventario.html',
+					controller: 'ModalInventarioController',
+					size: 'lg',
+					resolve: {
+						data: function () {
+							return $scope.venta.asociacion.id							
+						}
+					}
 				}).result.then(function (data) {
 					$scope.error = false;
 
+					if(parseFloat(data.cantidad) <= 0) {
+						$scope.error = true;
+						$scope.mensajeError = 'El producto seleccionado no tiene stock.';
+						return;
+					}
+
 					for(var i in $scope.venta.detalles){
-						if($scope.venta.detalles[i].producto.id === data.id){
+						if($scope.venta.detalles[i].inventario.id === data.id){
 							$scope.error = true;
 							$scope.mensajeError = 'El producto seleccionado ya se encuentra en la lista';	
 							return;
 						}
 					}					
 
-					$scope.venta.detalles[$index].producto = data;
-					$scope.venta.detalles[$index].precio_unitario = data.precio_referencial;
+					$scope.venta.detalles[$index].inventario = data;
+					$scope.venta.detalles[$index].precio_unitario = data.valor_unitario;
 					$scope.calcularTotal($index);
 				});
 			}		
@@ -125,17 +157,19 @@
 
 				var detalle = {
 					cantidad: '1',
-					producto: '',
+					inventario: '',
 					precio_unitario: '0',
 					precio_total: '',
 					usos: [],
+					caducidad: [],
 					esActual: true
 				};
 
 				if($scope.venta.detalles.length > 0){
-					var prod = $scope.venta.detalles[0].producto;
+					var prod = $scope.venta.detalles[0].inventario;
 					var valt = $scope.venta.detalles[0].precio_total;
 					var emptyUsos = $scope.venta.detalles[0].usos.length <= 0? true:false;
+					var emptyCaducidad = $scope.venta.detalles[0].caducidad.length <= 0? true:false;
 					if(!prod || !valt){
 						$scope.error = true;
 						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
@@ -145,6 +179,12 @@
 					if(emptyUsos){
 						$scope.error = true;
 						$scope.mensajeError = 'Debe especificar los usos del producto';
+						return;	
+					}
+
+					if(emptyCaducidad){
+						$scope.error = true;
+						$scope.mensajeError = 'Debe especificar las caducidades del producto';
 						return;	
 					}
 
@@ -200,6 +240,30 @@
 				});
 			}
 
+			$scope.agregarCaducidad = function ($index) {	
+				$scope.error = false;
+				if(!$scope.venta.detalles[$index].inventario) {
+					$scope.error = true;
+					$scope.mensajeError = 'Debe seleccionar un producto.';
+					return;
+				}
+
+				$modal.open({
+					templateUrl: 'partials/modal-caducidad.html',
+					controller: 'ModalCaducidadController',
+					resolve: {
+						data : function () {
+							return {
+								caducidades : $scope.venta.detalles[$index].caducidad,
+								fechas: $scope.venta.detalles[$index].inventario.caducidades
+							}
+						}
+					}					
+				}).result.then(function (data) {					
+					$scope.venta.detalles[$index].caducidad = data;					
+				});
+			}
+
 			$scope.seleccionarFecha = function ($event) {
 				console.log($scope.venta.fecha.getTime());
 				$event.preventDefault;
@@ -215,21 +279,21 @@
 
 				if($scope.error){
 					$scope.mensajeError = 'Debe llenar todos los campos de encabezado.';
-					return;
+					return false;
 				}
 
 				if($scope.venta.detalles.length < 1){
 					$scope.error = true;	
 					$scope.mensajeError = 'No ha ingresado detalles de venta.';
-					return;
+					return false;
 				} 
 
 				for (var i in $scope.venta.detalles) {
 					var detalle = $scope.venta.detalles[i];
-					if(!detalle.producto || !detalle.precio_total){
+					if(!detalle.inventario || !detalle.precio_total){
 						$scope.error = true;
 						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
-						return;
+						return false;
 					}
 				}
 
@@ -237,15 +301,25 @@
 					var detalle = $scope.venta.detalles[i];
 					if(detalle.usos.length < 1){
 						$scope.error = true;
-						$scope.mensajeError = 'El item ' + detalle.producto.nombre + ' no tiene USOS resgistrados';
-						return;
+						$scope.mensajeError = 'El item ' + detalle.inventario.producto.nombre + ' no tiene USOS registrados';
+						return false;
 					}
 				}
-				return $scope.error;
+
+				for (var i in $scope.venta.detalles) {
+					var detalle = $scope.venta.detalles[i];
+					if(detalle.caducidad.length < 1){
+						$scope.error = true;
+						$scope.mensajeError = 'El item ' + detalle.inventario.producto.nombre + ' no tiene CADUCIDAD resgistrados';
+						return false;
+					}
+				}
+
+				return true;
 			}	
 
 			$scope.guardarVenta = function () {
-				if(validarDatos()) return;
+				if(!validarDatos()) return;
 				var total = 0;
 				for(var i in $scope.venta.detalles){
 					var detalle = $scope.venta.detalles[i];
@@ -907,12 +981,114 @@
 					});
 			}
 		}])
-		.controller('ModalInventarioController', ['$scope', '$modalInstance', 'compraService', 'data', function ($scope, $modalInstance, compraService, data) {
-			var id = data;
-			compraService.getPorId(id)
+		.controller('ModalInventarioController', ['$scope', '$modalInstance', 'inventarioService', 'data',function ($scope, $modalInstance, inventarioService, data) {			
+			var dataList = {};
+			var asociacion = data;
+			$scope.inventarios = [];					
+			$scope.error = false;
+			$scope.mensajeError = '';	
+			$scope.selected = -1;		
+
+			inventarioService.getTodos(asociacion)
 				.then(function (data) {
-					$scope.compra = data;					
+					dataList = data;
+					$scope.inventarios = data;					
+				});					
+
+			var contains = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
+			};
+
+			var startsWith = function (str, searchString) {
+				return str.toLowerCase().indexOf(searchString.toLowerCase()) === 0;
+			};		
+
+			var filter = function (){
+				$scope.inventarios = [];
+				$scope.inventarios = dataList.filter(function (obj) {
+					if(contains(obj.producto.nombre, $scope.keyword) || contains(obj.producto.compuesto, $scope.keyword) 
+						|| contains(obj.producto.presentacion, $scope.keyword)) {
+						return obj.producto;
+					}
 				});
+			}			
+
+			$scope.filtrarProductos = function (event) {						
+				if(!event){
+					filter();							
+				}else if(event.keyCode === 13){
+					filter();
+				}						
+			};
+
+			$scope.seleccionar = function ($index) {
+				$scope.selected = $index;
+			}
+
+			$scope.ok = function () {				
+				if($scope.selected === -1){
+					$scope.error = true;
+					$scope.mensajeError = 'No ha seleccionado ningun item.';
+					return;
+				}
+				$modalInstance.close($scope.inventarios[$scope.selected]);
+			}
+
+			$scope.cancelar = function () {			
+				$modalInstance.dismiss('cancel');
+			}		
+		}])
+		.controller('ModalCaducidadController', ['$scope', '$modalInstance', 'data', function ($scope, $modalInstance, data) {			
+			$scope.caducidad = {};
+			$scope.caducidades = data.caducidades;			
+			$scope.error = false;			
+			var fechas = data.fechas;			
+			
+			$scope.agregarCaducidad = function () {				
+				$scope.error = false;
+
+				if(!$scope.caducidad.cantidad) $scope.error = true;
+				if(parseFloat($scope.caducidad.cantidad) <= 0) $scope.error = true;
+				if(!$scope.caducidad.fecha) $scope.error = true;				
+
+				if($scope.error) {					
+					$scope.mensajeError = 'Los campos de CANTIDAD y FECHA son requeridos.';	
+					return;
+				}
+
+				for(var i = 0; i < fechas.length; i++) {					
+					var fecha = new Date(fechas[i].fecha);
+					fecha.setDate(fechas[i].fecha.split('-')[2]);
+
+					if($scope.caducidad.fecha.getDate() != fecha.getDate()) $scope.error = true;
+					if($scope.caducidad.fecha.getMonth() != fecha.getMonth()) $scope.error = true;
+					if($scope.caducidad.fecha.getFullYear() != fecha.getFullYear()) $scope.error = true;
+
+					if($scope.error){
+						$scope.mensajeError = 'No existe items en el inventario con la fecha de caducidad ingresada';
+						return;
+					}
+				}
+
+				
+				
+				$scope.caducidades.push($scope.caducidad);
+				$scope.caducidad = {};
+			}
+
+			$scope.removerCaducidad = function ($index) {
+				$scope.caducidades.splice($index, 1);
+			}			
+
+			$scope.ok = function () {
+				if($scope.caducidades.length < 1) {
+					$scope.error = true;
+					$scope.mensajeError = 'No ha ingresado items de caducidad.';
+					return;
+				}
+
+				$modalInstance.close($scope.caducidades);
+			}	
 
 			$scope.cancelar = function () {			
 				$modalInstance.dismiss('cancel');

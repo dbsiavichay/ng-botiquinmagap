@@ -1,0 +1,40 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title">Registro de caducidad</h4>
+</div>
+<div class="modal-body">
+	<div ng-show="error" class="alert alert-danger" role="alert">
+		<strong>Error!</strong> {{mensajeError}}
+	</div>
+	<div class="row">						
+		<div class="col-xs-4 input-inline">
+			<input ng-model="caducidad.cantidad" type="text" class="form-control" placeholder="Cantidad">
+		</div>	
+		<div class="col-xs-6 input-inline">
+      <input ng-model="caducidad.fecha" class="form-control" type="date" placeholder="Fecha de caducidad">
+    </div>
+		<div class="col-xs-1 input-inline">							
+			<button ng-click="agregarCaducidad()" class="btn btn-success">
+				<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+			</button>
+		</div>
+	</div>
+	<hr>
+  <ul class="list-group">
+    <li ng-hide="caducidades.length" class="list-group-item">
+      'Sin registros'
+    </li>
+    <li ng-repeat="caducidad in caducidades" class="list-group-item">
+      <button ng-click="removerCaducidad($index)" class="btn btn-danger btn-xs pull-right">
+        <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+      </button>
+      <strong>{{caducidad.cantidad}}</strong> - {{caducidad.fecha | date : 'fullDate'}}
+    </li>
+  </ul> 	
+</div>
+<div class="modal-footer">
+	<button ng-click="cancelar()" type="button" class="btn btn-default">Cancelar</button>
+	<button ng-click="ok()" type="button" class="btn btn-primary">Aceptar</button>
+</div>

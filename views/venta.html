@@ -74,16 +74,16 @@
 										<input ng-keydown="cancelEnter($event)" ng-show="detalle.esActual" ng-model="detalle.cantidad" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtCantidad" placeholder="Ej. 1.12">
 										<p ng-hide="detalle.esActual">{{detalle.cantidad}}</p>
 									</td>
-									<td class="col-xs-5">
+									<td class="col-xs-4">
 										<div ng-show="detalle.esActual" class="input-group input-group-sm">  
-      									<input type="text" class="form-control" placeholder="Buscar producto" value="{{detalle.producto.nombre}} - {{detalle.producto.presentacion}}" readonly>
+      									<input type="text" class="form-control" placeholder="Buscar producto" value="{{detalle.inventario.producto.nombre}} - {{detalle.inventario.producto.presentacion}}" readonly>
       									<span class="input-group-btn">
 		      								<button ng-click="seleccionarProducto($index)" class="btn btn-success" title="Buscar">
 														<span class="glyphicon glyphicon-search" aria-hidden="true"></span>
 													</button>
 			      						</span>
 			    					</div>
-			    					<p ng-hide="detalle.esActual">{{detalle.producto.nombre}}</p>
+			    					<p ng-hide="detalle.esActual">{{detalle.inventario.producto.nombre}} - {{detalle.inventario.producto.nombre}}</p>
 									</td>
 									<td class="col-xs-2">
 										<input ng-keydown="cancelEnter($event)" ng-show="detalle.esActual" ng-model="detalle.precio_unitario" ng-keyup="calcularTotal($index)" type="text" class="form-control input-sm" id="txtValorUnitario" placeholder="Precio del producto">
@@ -93,9 +93,12 @@
 										<input ng-show="detalle.esActual" type="text" class="form-control input-sm" id="txtValorTotal" ng-model="detalle.precio_total" readonly>
 										<p ng-hide="detalle.esActual">{{detalle.precio_total}}</p>
 									</td>
-									<td class="col-xs-2">
-										<button ng-click="seleccionarUsos($index)" class="btn btn-danger btn-sm" title="Registro de usos">
+									<td class="col-xs-3">
+										<button ng-click="seleccionarUsos($index)" class="btn btn-warning btn-sm" title="Registro de usos">
 											<strong>USOS</strong>
+										</button>
+										<button ng-click="agregarCaducidad($index)" class="btn btn-info btn-sm" title="Registro de usos">
+											<strong>CADUCIDAD</strong>
 										</button>										
 										<button ng-click="editarDetalle($index)" class="btn btn-primary btn-sm">
 											<span pan class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
