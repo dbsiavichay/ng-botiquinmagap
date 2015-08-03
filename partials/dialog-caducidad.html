@@ -1,0 +1,32 @@
+<div class="modal-header">
+	<button ng-click="cancelar()" type="button" class="close" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+	<h4 class="modal-title" id="myModalLabel">Detalle de caducidad</h4>
+</div>
+<div class="modal-body">
+	<div class="table-responsive">
+		<table class="table table-striped table-condensed table-hover">
+			<thead>
+				<tr>
+					<th>Cant.</th>
+					<th>Caduca el</th>
+					<th>Restan</th>									
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td ng-show="isEmpty" colspan="3">No existen registros</td>
+				</tr>
+				<tr ng-repeat="item in fechas" ng-class="{info: item.dias < 90, warning: item.dias < 60, danger: item.dias < 30}">
+					<td>{{item.cantidad}}</td>
+					<td>{{item.fecha}}</td>
+					<td><strong>{{item.dias}}</strong> días</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+<div class="modal-footer">
+	<button ng-click="cancelar()" type="button" class="btn btn-default">Aceptar</button>	
+</div>

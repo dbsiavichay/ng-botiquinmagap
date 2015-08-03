@@ -937,6 +937,18 @@
 						$scope.inventarios = data;
 					});
 				}
+
+			$scope.ver = function ($index) {				
+				$modal.open({										
+					templateUrl: 'partials/dialog-caducidad.html',
+					controller: 'ModalCaducidadController',
+					resolve: {
+						data: function () {
+							return {fechas: $scope.inventarios[$index].caducidades}
+						}
+					}
+				});
+			}
 		}])
 		.controller('InventarioController', ['$scope', '$modal', '$location', 'inventarioService', function ($scope, $modal, $location, inventarioService) {
 			$scope.inventario = {};
@@ -1108,8 +1120,8 @@
 		.controller('ModalCaducidadController', ['$scope', '$modalInstance', 'data', function ($scope, $modalInstance, data) {			
 			$scope.caducidad = {};
 			$scope.caducidades = data.caducidades;			
+			$scope.fechas = data.fechas;			
 			$scope.error = false;			
-			var fechas = data.fechas;			
 			
 			$scope.agregarCaducidad = function () {				
 				$scope.error = false;
@@ -1123,10 +1135,10 @@
 					return;
 				}
 
-				if(fechas) {
-					for(var i = 0; i < fechas.length; i++) {					
-						var fecha = new Date(fechas[i].fecha);
-						fecha.setDate(fechas[i].fecha.split('-')[2]);
+				if($scope.fechas) {
+					for(var i = 0; i < $scope.fechas.length; i++) {					
+						var fecha = new Date($scope.fechas[i].fecha);
+						fecha.setDate($scope.fechas[i].fecha.split('-')[2]);
 
 						if($scope.caducidad.fecha.getDate() != fecha.getDate()) $scope.error = true;
 						if($scope.caducidad.fecha.getMonth() != fecha.getMonth()) $scope.error = true;
@@ -1160,7 +1172,7 @@
 			$scope.cancelar = function () {			
 				$modalInstance.dismiss('cancel');
 			}		
-		}])
+		}])		
 		.controller('RComercialController', ['$scope','reporteService', function ($scope, reporteService) {
 			$scope.asociacion = {};
 			$scope.detalles = [];

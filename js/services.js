@@ -738,16 +738,12 @@
 									for(var i = 0; i < alldata.length; i++){
 										if(alldata[i].config.url.indexOf('producto='+inventario.producto.id) > -1) {
 											var caducidades = alldata[i].data;
-											var dias = 1000000000000000;
+											var days = 1000000000000000;
 											for(var j=0; j < caducidades.length; j++) {
-												var hoy = new Date();
-												var caducidad = new Date(caducidades[j].fecha);
-												var dif = caducidad.getTime() - hoy.getTime();
-												var days = Math.round(dif/(1000 * 60 * 60 * 24));												
-												if(days < dias) dias = days;
+												if(caducidades[j].dias < days) days = caducidades[j].dias;
 											}
 
-											inventario.dias = dias;
+											inventario.dias = days;
 											inventario.caducidades = caducidades;											
 											break;
 										}
