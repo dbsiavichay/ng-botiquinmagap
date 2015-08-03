@@ -936,8 +936,7 @@
 					.then(function (data) {
 						$scope.inventarios = data;
 					});
-			}
-
+				}
 		}])
 		.controller('InventarioController', ['$scope', '$modal', '$location', 'inventarioService', function ($scope, $modal, $location, inventarioService) {
 			$scope.inventario = {};
@@ -1211,7 +1210,7 @@
 				});
 
 			$scope.generar = function () {
-				reporteService.getVentasProducto($scope.opciones.asociacion, $scope.opciones.mes)
+				reporteService.getCardexInicial($scope.opciones.asociacion, $scope.opciones.mes)
 					.then(function (data) {
 						$scope.detalles = data;
 						$scope.mostrar = true;

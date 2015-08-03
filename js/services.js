@@ -899,14 +899,7 @@
 			}
 
 			function getAsociaciones () {
-				var deferred = $q.defer();
-
-				asociacionService.getTodos()
-					.then(function (data) {
-						deferred.resolve(data)
-					});
-
-				return deferred.promise;	
+				return asociacionService.getTodos();
 			}			
 
 			function getVentasMensuales(mes, asociacion) {
@@ -964,56 +957,82 @@
 				return deferred.promise;
 			}			
 
-			function getVentasProducto (asociacion, mes) {
+			function getCardexInicial (asociacion, mes) {
 				var deferred = $q.defer();
 				var reportes = [];
 
-				$http.get(baseUrl+'kardexs/?inicial=true&asociacion='+asociacion)
-					.success(function (data) {
-						var kardexs = data;						
-						var peticiones = kardexs.map(function (kardex) {
-							reportes.push({producto: kardex.producto, cantidad_magap: parseFloat(kardex.cantidad)});
-							return $http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes+'&producto='+kardex.producto);
+
+				var promesaInventario = $q(function (resolve, reject) {
+					$http.get(baseUrl+'inventarios/?inicial=true&asociacion='+asociacion)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
+						});
+				});
+
+				var promesaVentas = promesaInventario
+					.then(function (inventarios) {
+
+						var peticiones = inventarios.map(function (inventario) {
+							reportes.push({
+								producto: inventario.producto,
+								cantidad_magap: inventario.cantidad_inicial
+							});
+							return $http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes+'&producto='+inventario.producto);
+						});						
+						
+						return $q.all(peticiones)
+							.then(function (data) {
+								return data;
+							});						
+					});
+
+				var promesaTotales = promesaVentas
+					.then(function (alldetalles) {
+						reportes.forEach(function (reporte) {
+							for(var i = 0; i < alldetalles.length; i++) {
+								if(alldetalles[i].config.url.indexOf('producto='+reporte.producto) > -1) {
+									var detalles = alldetalles[i].data;
+									var suma = 0;
+									for(var j = 0; j < detalles.length; j++) {
+										suma+=parseFloat(detalles[j].cantidad);
+									}
+									reporte.cantidad_vendida = suma;
+									break;
+								}
+							}
+						});
+						return 0;
+					});
+
+
+				var promesaProductos = promesaTotales
+					.then(function (data) {
+						var peticiones = reportes.map(function (reporte) {
+							return $http.get(baseUrl+'productos/'+reporte.producto);
 						});
 
-						$q.all(peticiones)
-							.then(function (data) {
-								data.forEach(function (detalleslist) {
-									var detalles = detalleslist.data;
-									var suma = 0;
-									detalles.forEach(function (detalle) {
-										suma+=parseFloat(detalle.cantidad);
-									});
-									
-									if(detalles.length > 0) {										
-										for(var i = 0; i < reportes.length; i++) {											
-											if(detalles[0].producto === reportes[i].producto) {
-												reportes[i].cantidad_vendida = suma;
-												break;
-											}
+						return $q.all(peticiones)
+							.then(function (productos) {
+								reportes.forEach(function (reporte) {
+									for(var i = 0; i < productos.length; i++) {
+										if(productos[i].data.id === reporte.producto) {
+											reporte.producto = productos[i].data;
+											break;
 										}
-									}									
+									}
 								});
-
-								var petsproductos = reportes.map(function (reporte) {
-									if(!reporte.cantidad_vendida) reporte.cantidad_vendida = 0;
-									return $http.get(baseUrl+'productos/'+reporte.producto)
-								});
-
-								$q.all(petsproductos)
-									.then(function (productos) {
-										reportes.forEach(function (reporte) {
-											for(var i = 0; i < productos.length; i++) {
-												if(reporte.producto === productos[i].data.id) {
-													reporte.producto = productos[i].data;
-													break;
-												}
-											}
-										});
-										deferred.resolve(reportes);
-									});
-							});		
+								return 0;
+							});
 					});
+
+				promesaProductos
+					.then(function (data) {
+						deferred.resolve(reportes);
+					});
+
 				return deferred.promise;				
 			}
 
@@ -1021,7 +1040,7 @@
 				getMeses: getMeses,
 				getAsociaciones: getAsociaciones,
 				getVentasMensuales: getVentasMensuales,
-				getVentasProducto: getVentasProducto
+				getCardexInicial: getCardexInicial
 			}
 		}]);
 })();

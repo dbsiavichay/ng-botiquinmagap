@@ -1,72 +1,74 @@
 <div ng-controller="RKardexController">
-	<div class="form-inline">
-	  	<div class="form-group">
-	    	<label>Asociación</label>
-	    	<select ng-model="opciones.asociacion" class="form-control">
-	    		<option value="">-- Seleccionar --</option>	
-	    		<option ng-repeat="asociacion in asociaciones" value="{{asociacion.id}}">{{asociacion.nombre}}</option>
-	    	</select>
-	  	</div>
-	  	<div class="form-group">
-	    	<label>Mes</label>
-	    	<select ng-model="opciones.mes" class="form-control">
-	    		<option value="">-- Seleccionar --</option>	
-	    		<option ng-repeat="mes in meses" value="{{mes.id}}">{{mes.nombre}}</option>
-	    	</select>
-	  	</div>	  	
-	  	<button ng-click="generar()" class="btn btn-primary">Generar</button>
-	</div>
-	<div ng-show="mostrar">
-		<hr>
-		<div class="row">
-			<div class="col-md-4">
-				<strong>Nombre de la organizacion: </strong>
-				<p>{{asociacion.nombre}}</p>
+	<fieldset>
+		<legend>Reporte Cardex Inicial</legend>
+		<div class="form-inline">
+		  	<div class="form-group">
+		    	<label>Asociación</label>
+		    	<select ng-model="opciones.asociacion" class="form-control">
+		    		<option value="">-- Seleccionar --</option>	
+		    		<option ng-repeat="asociacion in asociaciones" value="{{asociacion.id}}">{{asociacion.nombre}}</option>
+		    	</select>
+		  	</div>
+		  	<div class="form-group">
+		    	<label>Mes</label>
+		    	<select ng-model="opciones.mes" class="form-control">
+		    		<option value="">-- Seleccionar --</option>	
+		    		<option ng-repeat="mes in meses" value="{{mes.id}}">{{mes.nombre}}</option>
+		    	</select>
+		  	</div>	  	
+		  	<button ng-click="generar()" class="btn btn-primary">Generar</button>
+		</div>
+		<div ng-show="mostrar">
+			<hr>
+			<div class="row">
+				<div class="col-md-4">
+					<strong>Nombre de la organizacion: </strong>
+					<p>{{asociacion.nombre}}</p>
+				</div>
+				<div class="col-md-4">
+					<strong>Responsable: </strong>
+					<p>{{asociacion.responsable}}</p>
+				</div>
+				<div class="col-md-4">
+					<strong>Georeferenciación: </strong>
+					<p>{{asociacion.latitud}}, {{asociacion.longitud}}</p>
+				</div>
+				<div class="col-md-4">
+					<strong>Cantón: </strong>
+					<p>{{asociacion.ubicacion.canton}}</p>
+				</div>
+				<div class="col-md-4">
+					<strong>Parroquia: </strong>
+					<p>{{asociacion.ubicacion.parroquia}}</p>
+				</div>
+				<div class="col-md-4">
+					<strong>Sector: </strong>
+					<p>{{asociacion.ubicacion.sector}}</p>
+				</div>
 			</div>
-			<div class="col-md-4">
-				<strong>Responsable: </strong>
-				<p>{{asociacion.responsable}}</p>
-			</div>
-			<div class="col-md-4">
-				<strong>Georeferenciación: </strong>
-				<p>{{asociacion.latitud}}, {{asociacion.longitud}}</p>
-			</div>
-			<div class="col-md-4">
-				<strong>Cantón: </strong>
-				<p>{{asociacion.ubicacion.canton}}</p>
-			</div>
-			<div class="col-md-4">
-				<strong>Parroquia: </strong>
-				<p>{{asociacion.ubicacion.parroquia}}</p>
-			</div>
-			<div class="col-md-4">
-				<strong>Sector: </strong>
-				<p>{{asociacion.ubicacion.sector}}</p>
+			<div class="table-responsive">
+				<table class="table table-bordered table-condensed">
+					<thead>
+						<tr>
+							<th>ITEM</th>
+							<th>PRODUCTO</th>
+							<th>CANTIDAD ENTREGADA</th>
+							<th>CANTIDAD VENDIDA</th>
+							<th>SALDO FIN DE MES</th>						
+						</tr>
+					</thead>
+					<tbody>
+						<tr ng-hide="detalles.length > 0"><td colspan="5">No existen registros</td></tr>
+						<tr ng-repeat="detalle in detalles">
+							<td>{{$index + 1}}</td>
+							<td>{{detalle.producto.nombre}}</td>
+							<td>{{detalle.cantidad_magap}}</td>
+							<td>{{detalle.cantidad_vendida}}</td>
+							<td>{{detalle.cantidad_magap - detalle.cantidad_vendida}}</td>		
+						</tr>
+					</tbody>
+				</table>
 			</div>
 		</div>
-		<div class="table-responsive">
-			<table class="table table-bordered table-condensed">
-				<thead>
-					<tr>
-						<th>ITEM</th>
-						<th>PRODUCTO</th>
-						<th>CANTIDAD ENTREGADA</th>
-						<th>CANTIDAD VENDIDA</th>
-						<th>SALDO FIN DE MES</th>						
-					</tr>
-				</thead>
-				<tbody>
-					<tr ng-hide="detalles.length > 0"><td colspan="5">No existen registros</td></tr>
-					<tr ng-repeat="detalle in detalles">
-						<td>{{$index + 1}}</td>
-						<td>{{detalle.producto.nombre}}</td>
-						<td>{{detalle.cantidad_magap}}</td>
-						<td>{{detalle.cantidad_vendida}}</td>
-						<td>{{detalle.cantidad_magap - detalle.cantidad_vendida}}</td>		
-					</tr>
-				</tbody>
-			</table>
-		</div>
-	</div>
-
+	</fieldset>
 </div>
