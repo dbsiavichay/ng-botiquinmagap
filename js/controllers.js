@@ -683,12 +683,25 @@
 			}
 		}])
 		.controller('ComprasController', ['$scope', '$modal', 'compraService', function ($scope, $modal, compraService) {
-			$scope.compras = [];			
+			$scope.asociacionSelected = {};			
 
-			compraService.getTodos()
+			compraService.getAsociaciones()
 				.then(function (data) {
-					$scope.compras = data;
+					$scope.asociaciones = data;
+					$scope.asociacionSelected = data[0];
+					compraService.getTodos($scope.asociacionSelected.id)
+						.then(function (data) {
+							$scope.compras = data;
+						});					
 				});
+
+			$scope.cargarCompras = function () {
+				compraService.getTodos($scope.asociacionSelected.id)
+					.then(function (data) {
+						$scope.compras = data;
+					});	
+			}
+
 
 			$scope.ver = function ($index) {				
 				$modal.open({					
@@ -703,7 +716,7 @@
 				});
 			}
 		}])
-		.controller('CompraController', ['$scope', '$modal', '$location', '$routeParams', 'compraService', 'asociacionService', function ($scope, $modal, $location, $routeParams, compraService, asociacionService) {
+		.controller('CompraController', ['$scope', '$modal', '$location', '$routeParams', 'compraService', function ($scope, $modal, $location, $routeParams, compraService) {
 			var idCompra = parseInt($routeParams.id);
 
 			$scope.asociaciones = [];
@@ -722,7 +735,7 @@
 					});
 			}
 
-			asociacionService.getTodos()
+			compraService.getAsociaciones()
 				.then(function (data) {
 					$scope.asociaciones = data;
 				});
@@ -760,20 +773,28 @@
 					cantidad: '1',
 					producto: '',
 					costo_unitario: '0',
-					costo_total: '',					
+					costo_total: '',
+					caducidad: [],
 					esActual: true
-				};
+				};				
 
 				if($scope.compra.detalles.length > 0){
 					var prod = $scope.compra.detalles[0].producto;
 					var valt = $scope.compra.detalles[0].costo_total;
+					var emptyCaducidad = $scope.compra.detalles[0].caducidad.length;
 
 					if(!prod || !valt){
 						$scope.error = true;
 						$scope.mensajeError = 'Debe llenar todos los campos necesarios';
 						return;
 					}					
-				}
+
+					if(!emptyCaducidad) {
+						$scope.error = true;
+						$scope.mensajeError = 'Debe especificar las caducidades del producto';
+						return;
+					}
+				}				
 
 				$scope.compra.detalles.forEach(function (element) {
 					element.esActual = false;
@@ -802,6 +823,30 @@
 				$scope.compra.detalles.splice($index, 1);				
 			}		
 
+
+			$scope.agregarCaducidad = function ($index) {	
+				$scope.error = false;
+				if(!$scope.compra.detalles[$index].producto) {
+					$scope.error = true;
+					$scope.mensajeError = 'Debe seleccionar un producto.';
+					return;
+				}
+
+				$modal.open({
+					templateUrl: 'partials/modal-caducidad.html',
+					controller: 'ModalCaducidadController',
+					resolve: {
+						data : function () {
+							return {
+								caducidades : $scope.compra.detalles[$index].caducidad								
+							}
+						}
+					}					
+				}).result.then(function (data) {					
+					$scope.compra.detalles[$index].caducidad = data;					
+				});
+			}
+
 			$scope.calcularTotal = function ($index) {											
 				var p = $scope.compra.detalles[$index].costo_unitario;
 				var c = $scope.compra.detalles[$index].cantidad;
@@ -823,7 +868,7 @@
 
 				if($scope.compra.detalles.length < 1){
 					$scope.error = true;	
-					$scope.mensajeError = 'No ha ingresado detalles de venta.';
+					$scope.mensajeError = 'No ha ingresado detalles de compra.';
 					return;
 				} 
 
@@ -832,6 +877,15 @@
 					if(!detalle.producto || !detalle.costo_total){
 						$scope.error = true;
 						$scope.mensajeError = 'La lista de detalles tiene items con campos obligatorios faltantes';
+						return;
+					}
+				}
+
+				for (var i in $scope.compra.detalles) {
+					var detalle = $scope.compra.detalles[i];
+					if(detalle.caducidad.length < 1){
+						$scope.error = true;
+						$scope.mensajeError = 'El item ' + detalle.producto.nombre + ' no tiene CADUCIDAD resgistrados';
 						return;
 					}
 				}
@@ -862,14 +916,28 @@
 			}		
 		}])
 		.controller('InventariosController', ['$scope', '$modal', 'inventarioService', function ($scope, $modal, inventarioService) {
-			$scope.inventarios = [];
+			$scope.asociacionSelected = {};
 			$scope.error = false;
 			$scope.mensajeError = '';
 
-			inventarioService.getTodos(1)
+			inventarioService.getAsociaciones()
 				.then(function (data) {
-					$scope.inventarios = data;
+					$scope.asociaciones = data;
+					$scope.asociacionSelected = data[0];
+					
+					inventarioService.getTodos($scope.asociacionSelected.id)
+						.then(function (data) {
+							$scope.inventarios = data;
+						});
 				});
+
+			$scope.cargarInventario = function () {
+				inventarioService.getTodos($scope.asociacionSelected.id)
+					.then(function (data) {
+						$scope.inventarios = data;
+					});
+			}
+
 		}])
 		.controller('InventarioController', ['$scope', '$modal', '$location', 'inventarioService', function ($scope, $modal, $location, inventarioService) {
 			$scope.inventario = {};
@@ -1056,22 +1124,22 @@
 					return;
 				}
 
-				for(var i = 0; i < fechas.length; i++) {					
-					var fecha = new Date(fechas[i].fecha);
-					fecha.setDate(fechas[i].fecha.split('-')[2]);
+				if(fechas) {
+					for(var i = 0; i < fechas.length; i++) {					
+						var fecha = new Date(fechas[i].fecha);
+						fecha.setDate(fechas[i].fecha.split('-')[2]);
 
-					if($scope.caducidad.fecha.getDate() != fecha.getDate()) $scope.error = true;
-					if($scope.caducidad.fecha.getMonth() != fecha.getMonth()) $scope.error = true;
-					if($scope.caducidad.fecha.getFullYear() != fecha.getFullYear()) $scope.error = true;
+						if($scope.caducidad.fecha.getDate() != fecha.getDate()) $scope.error = true;
+						if($scope.caducidad.fecha.getMonth() != fecha.getMonth()) $scope.error = true;
+						if($scope.caducidad.fecha.getFullYear() != fecha.getFullYear()) $scope.error = true;
 
-					if($scope.error){
-						$scope.mensajeError = 'No existe items en el inventario con la fecha de caducidad ingresada';
-						return;
-					}
+						if($scope.error){
+							$scope.mensajeError = 'No existe items en el inventario con la fecha de caducidad ingresada';
+							return;
+						}
+					}					
 				}
-
-				
-				
+							
 				$scope.caducidades.push($scope.caducidad);
 				$scope.caducidad = {};
 			}

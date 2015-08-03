@@ -470,7 +470,7 @@
 				getTodos: getProductosTodos,
 			}
 		}])
-		.factory('compraService', ['$http', '$q', function ($http, $q) {
+		.factory('compraService', ['$http', '$q', 'asociacionService',function ($http, $q, asociacionService) {
 			function getCompraPorId (id) {
 				var deferred = $q.defer();
 
@@ -527,11 +527,11 @@
 				return deferred.promise;
 			}
 
-			function getCompraTodos () {
+			function getCompraTodos (asociacion) {
 				var deferred = $q.defer();
 
 				var promesa = $q(function (resolve, reject) {
-					$http.get(baseUrl+'compras/')
+					$http.get(baseUrl+'compras/?asociacion='+asociacion)
 						.success(function (data) {						
 							resolve(data);
 						})
@@ -629,6 +629,33 @@
 												$http.post(baseUrl+'inventarios/', inventario);
 											}
 										});
+
+								
+									$http.get(baseUrl+'caducidad/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id)
+										.success(function (data) {
+											for(var i = 0; i < detalle.caducidad.length; i++) {
+												var caducidadcliente = detalle.caducidad[i];
+												for(var j = 0; j < data.length; j++) {
+													var caducidadbase = data[j];
+													if(formatFecha(caducidadcliente.fecha) === caducidadbase.fecha) {
+														caducidadcliente.id = caducidadbase.id;														
+														caducidadcliente.cantidad = parseFloat(caducidadcliente.cantidad) + parseFloat(caducidadbase.cantidad);
+														break;														
+													}
+												}
+											}
+
+											detalle.caducidad.forEach(function (caducidad) {
+												caducidad.fecha = formatFecha(caducidad.fecha);
+												caducidad.producto = detalle.producto;
+												caducidad.asociacion = compra.asociacion.id;
+												if(caducidad.id) {
+													$http.put(baseUrl+'caducidad/'+caducidad.id+'/', caducidad);
+												}else{
+													$http.post(baseUrl+'caducidad/', caducidad);
+												}
+											});
+										});
 								});
 						});
 
@@ -637,11 +664,16 @@
 
 				return deferred.promise;
 			}
+
+			function getAsociaciones () {
+				return asociacionService.getTodos();
+			}
 			
 			return {	
 				getPorId: getCompraPorId,			
 				getTodos: getCompraTodos,
-				crear: crear
+				crear: crear,
+				getAsociaciones: getAsociaciones
 			}
 		}])
 		.factory('inventarioService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {

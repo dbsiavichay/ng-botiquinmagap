@@ -26,20 +26,18 @@
 					<th>NOMBRE</th>
 					<th>COMPUESTO</th>
 					<th>PRESENTACION</th>
-					<th>PRECIO REFERENCIAL</th>
-					<th>REGISTRO SANITARIO</th>
+					<th>PRECIO REFERENCIAL</th>					
 				</tr>
 			</thead>
 			<tbody>
 				<tr>
-					<td ng-show="isEmpty" colspan="3">No existen registros</td>
+					<td ng-show="isEmpty" colspan="4">No existen registros</td>
 				</tr>
 				<tr ng-repeat="producto in productos" ng-class="{success: productoSeleccionado === producto}"  ng-click="seleccionarProducto(producto)">
 					<td>{{producto.nombre}}</td>
 					<td>{{producto.compuesto}}</td>
 					<td>{{producto.presentacion}}</td>
-					<td>{{producto.precio_referencial}}</td>
-					<td>{{producto.registro_sanitario}}</td>
+					<td>{{producto.precio_referencial}}</td>					
 				</tr>
 			</tbody>
 		</table>

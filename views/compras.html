@@ -1,9 +1,20 @@
 <div ng-controller="ComprasController">
 	<fieldset>
-		<legend>Administración de compras</legend>		
-		<a href="/#compras/crear" class="btn btn-success">
-			<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Nuevo
-		</a>
+		<legend>Administración de compras</legend>
+		<div class="row">
+			<a href="/#compras/crear" class="btn btn-success col-xs-2">
+				<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Nuevo
+			</a>
+			<div class="col-xs-10 form-horizontal">
+				<div class="form-group">
+			  	<label class="control-label col-sm-6">Resultados de: </label>
+			  	<div class="col-sm-6">
+			    	<select ng-options="asociacion.nombre for asociacion in asociaciones track by asociacion.id" ng-model="asociacionSelected" ng-change="cargarCompras()" class="form-control">			    		
+			    	</select>    	
+			  	</div>					  	 	
+				</div>
+			</div>
+		</div>		
 		<hr>
 		<div class="table-responsive">
 			<table class="table table-striped table-condensed">
@@ -17,7 +28,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr ng-hide="compras"><td colspan="5">No existen registros</td></tr>
+					<tr ng-hide="compras.length"><td colspan="5">No existen registros</td></tr>
 					<tr ng-repeat="compra in compras">
 						<td>{{compra.asociacion.nombre}}</td>
 						<td>{{compra.id}}</td>
