@@ -1,9 +1,3 @@
-$(function () {
-	$('.dropdown-toggle').on('click', function (event) {
-		event.preventDefault();
-	});
-});
-
 (function(){		
 	var app = angular.module('botiquin', [
 		'ngRoute',
@@ -16,12 +10,12 @@ $(function () {
 	app.config(['$routeProvider', function ($routeProvider) {
 		$routeProvider
 			.when('/', {
-				templateUrl: 'views/lista-asociaciones.html',
-				controller: 'AsociacionController'
-			})
-			.when('/login', {
 				templateUrl: 'views/login.html',
 				controller: 'LoginController'
+			})
+			.when('/asociaciones', {
+				templateUrl: 'views/lista-asociaciones.html',
+				controller: 'AsociacionController'
 			})
 			.when('/ventas', {
 				templateUrl: 'views/ventas.html',

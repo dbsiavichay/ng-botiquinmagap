@@ -8,7 +8,7 @@
 	<link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-	<header>
+	<header ng-controller="NavController">
 		<nav class="navbar navbar-default">
 			<div class="container-fluid">
 		    	<div class="navbar-header">
@@ -18,38 +18,37 @@
 		        		<span class="icon-bar"></span>
 			        	<span class="icon-bar"></span>
 		      		</button>
-		       		<a class="navbar-brand" href="/#/">SICOBO</a>
-		    	</div>
-
+		       		<a ng-click="desabilitar($event)" class="navbar-brand" href="/#/">SICOBO</a>
+		    	</div>		    	
 			    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-			      <ul class="nav navbar-nav">
-			      	<li>
-								<a href="/#/">
-									<span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span> Mis asociaciones
-								</a>
-							</li>
-			      	<li>
-								<a href="/#ventas">
-									<span class="glyphicon glyphicon-usd" aria-hidden="true"></span> Ventas
-								</a>
-							</li>			        	
-							<li>
-								<a href="/#clientes">
-									<span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Clientes
-								</a>
-							</li>
-							<li>
-								<a href="/#compras">
-									<span class="glyphicon glyphicon-shopping-cart" aria-hidden="true"></span> Compras
-								</a>
-							</li>
-							<li>
-								<a href="/#inventarios">
-									<span class="glyphicon glyphicon-paperclip" aria-hidden="true"></span> Inventarios
-								</a>
-							</li>
-		        	<li class="dropdown">
-		          		<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+			      <ul ng-if="user" class="nav navbar-nav">
+			      	<li ng-if="opciones">
+						<a href="/#asociaciones">
+							<span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span> Mis asociaciones
+						</a>
+					</li>
+			      	<li ng-if="opciones">
+						<a href="/#ventas">
+							<span class="glyphicon glyphicon-usd" aria-hidden="true"></span> Ventas
+						</a>
+					</li>			        	
+					<li ng-if="opciones">
+						<a href="/#clientes">
+							<span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Clientes
+						</a>
+					</li>
+					<li ng-if="opciones">
+						<a href="/#compras">
+							<span class="glyphicon glyphicon-shopping-cart" aria-hidden="true"></span> Compras
+						</a>
+					</li>
+					<li ng-if="opciones">
+						<a href="/#inventarios">
+							<span class="glyphicon glyphicon-paperclip" aria-hidden="true"></span> Inventarios
+						</a>
+					</li>
+		        	<li ng-if="reportes" class="dropdown">
+		          		<a ng-click="desabilitar($event)" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
 		          			<span class="glyphicon glyphicon-print" aria-hidden="true"></span> Reportes
 		          			<span class="caret"></span>
 		          		</a>
@@ -60,12 +59,23 @@
 		          		</ul>
 		        	</li>
 			      </ul>			      	
-			      <ul class="nav navbar-nav navbar-right">
-		        	<li><a href="/#login">
-		        			<span class="glyphicon glyphicon-user" aria-hidden="true"></span> Iniciar sesión
-		        		</a>
-		        	</li>
-		      	</ul>
+			      	<ul class="nav navbar-nav navbar-right">							
+						<li ng-if="user" class="dropdown">
+			          		<a ng-click="desabilitar($event)" href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+								<span class="glyphicon glyphicon-user" aria-hidden="true"></span>
+								<span id="user">{{ user.username }}</span>
+								<span class="caret"></span>
+							</a>
+			         		<ul class="dropdown-menu" role="menu">
+			            		<li><a ng-click="logout()" href="/#/">Cerrar sesión</a></li>
+			          		</ul>
+			        	</li>							
+						<li ng-if="!user">
+							<a href="/#login">
+								<span class="glyphicon glyphicon-user" aria-hidden="true"></span> Iniciar sesión
+							</a>
+						</li>							
+			      	</ul>
 			    </div>
 		  	</div>
 		</nav>

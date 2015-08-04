@@ -1,21 +1,92 @@
 (function() {
 	var baseUrl = 'http://127.0.0.1:8000/'
-	var asociacionUrl = 'http://127.0.0.1:8000/asociaciones/';
-	var productoUrl = 'http://127.0.0.1:8000/productos/';
-	var enfermedadUrl = 'http://127.0.0.1:8000/enfermedades/';
-	var especieUrl = 'http://127.0.0.1:8000/especies/';	
-	var detalleVentaUrl = 'http://127.0.0.1:8000/detallesventa/';
-	var usosVentaUrl = 'http://127.0.0.1:8000/usosventa/';
-	var clienteUrl = 'http://127.0.0.1:8000/clientes/';
+	var user = {};
+
+	function getRequirements(url, method, data) {
+		return {
+			method: method,
+			url: url,
+			headers: {
+				'Authorization': 'Token ' + user.token
+			},
+			data: data
+		}
+	}
+
 
 	angular.module('botiquin.services', [])
+		.service('userService', ['$http', '$q', function ($http, $q) {			
 
+			function login (usuario) {				
+				var deferred = $q.defer();
+				var promesaLogin = $q(function (resolve, reject) {
+					$http.post(baseUrl+'api-token-auth/', usuario)
+						.success(function (data) {							
+							resolve(data.token);
+						})
+						.error(function (error) {
+							reject(error);
+						});
+				});
+
+				var promesaUsuario = promesaLogin
+					.then(function (data) {						
+						var peticion = {
+							method: 'GET',
+							url: baseUrl+'usuarios/?user='+usuario.username,
+							headers: {
+							  'Authorization': 'Token ' + data
+							}							
+						}			
+
+						return $q(function (resolve, reject) {
+							$http(peticion)
+								.success(function (users) {																											
+									user = users[0];
+									user.token = data;
+									if(user.asociaciones.length) {
+										user.asociaciones.every(function (item) {
+											item.tecnico = JSON.parse(item.tecnico);
+											item.ubicacion = JSON.parse(item.ubicacion);
+										});										
+									}
+									resolve(user)															
+								})
+								.error(function (error) {
+									reject(error);
+								});
+						});									
+					}, function (error) {
+						deferred.reject(error);
+					});
+
+				promesaUsuario
+					.then(function (data) {						
+						deferred.resolve(data);
+					});	
+
+				return deferred.promise;
+			}		
+
+			function logout() {
+				return $q(function (resolve, reject) {
+					user = {};
+					resolve();
+				});				
+			}		
+
+			return {
+				login: login,	
+				logout: logout			
+			}
+		}])
 		.factory('ventaService',['$http', '$q', 'asociacionService', 'clienteService', function ($http, $q, asociacionService, clienteService) {
 			function getVentaPorId (id) {
 				var deferred = $q.defer();
 
 				var promesaVenta = $q(function (resolve, reject) {
-					$http.get(baseUrl+'ventas/'+id)
+					var requirement = getRequirements(baseUrl+'ventas/'+id+'/', 'GET');
+					$http(requirement)
 						.success(function (data) {
 							resolve(data);
 						})
@@ -26,27 +97,23 @@
 
 				var promesaClienteAsociacion = promesaVenta
 					.then(function (data) {
-						var peticionCliente = $http.get(baseUrl+'clientes/'+data.cliente);
-						var peticionAsociacion = $http.get(baseUrl+'asociaciones/'+data.asociacion);
+						var requirement = getRequirements(baseUrl+'clientes/'+data.cliente+'/', 'GET');										
 
-						return $q.all([peticionCliente, peticionAsociacion])
-							.then(function (alldata) {
-								for(var i = 0; i < alldata.length; i++) {
-									if(alldata[i].config.url.indexOf('clientes') > -1) {
-										data.cliente = alldata[i].data;
-									}else{
-										data.asociacion = alldata[i].data;
-									}									
-								}
-								return data;	
-							});						
+						return $q(function (resolve, reject) {
+							$http(requirement)
+								.success(function (cliente) {
+									data.cliente = cliente;
+									resolve(data);
+								});
 						});
+					});						
 
 				var promesaProductos = promesaClienteAsociacion
 					.then(function (data) {
 						var detalles = data.detalles;
 						var peticiones = detalles.map(function (detalle) {
-							return $http.get(baseUrl+'productos/'+detalle.producto);
+							var requirement = getRequirements(baseUrl+'productos/'+detalle.producto+'/', 'GET');
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones)
@@ -63,7 +130,6 @@
 							});
 					});
 			
-
 				var promesaUsos = promesaProductos
 					.then(function (data) {
 						var solicitudes = [];
@@ -71,22 +137,23 @@
 						data.detalles.forEach(function (detalle) {
 							detalle.usos.forEach(function (uso) {
 								if(solicitudes.length === 0) {
-									solicitudes.push('enfermedades/'+uso.enfermedad);
-									solicitudes.push('especies/'+uso.especie);								
+									solicitudes.push('enfermedades/'+uso.enfermedad+'/');
+									solicitudes.push('especies/'+uso.especie+'/');								
 								}
 
 								if(solicitudes.indexOf('enfermedades/'+uso.enfermedad) < 0){
-									solicitudes.push('enfermedades/'+uso.enfermedad);
+									solicitudes.push('enfermedades/'+uso.enfermedad+'/');
 								}
 
 								if(solicitudes.indexOf('especies/'+uso.especie) < 0){
-									solicitudes.push('especies/'+uso.especie);
+									solicitudes.push('especies/'+uso.especie+'/');
 								}
 							});
 						});
 
 						var peticiones = solicitudes.map(function (item) {
-							return $http.get(baseUrl+item);
+							var requirement = getRequirements(baseUrl+item, 'GET');
+							return $http(requirement);
 						});						
 
 						return $q.all(peticiones)
@@ -125,11 +192,12 @@
 			}
 
 			function getVentaTodos (asociacion) {
-				var deferred = $q.defer();
+				var deferred = $q.defer();				
 
-				var promesa = $q(function (resolve, reject) {
-					$http.get(baseUrl+'ventas/?asociacion='+asociacion)
-						.success(function (data) {						
+				var promesaVentas = $q(function (resolve, reject) {
+					var requirement = getRequirements(baseUrl+'ventas/?asociacion='+asociacion, 'GET')
+					$http(requirement)
+						.success(function (data) {													
 							resolve(data);
 						})
 						.error(function (error) {
@@ -137,49 +205,34 @@
 						});	
 				});
 
-				var promesaClienteAsociacion = promesa
+				var promesaClienteAsociacion = promesaVentas
 					.then(function (data) {						
 						var solicitudes = [];
 
 						data.forEach(function (item) {
 							if(solicitudes.length === 0) {
-								solicitudes.push('clientes/'+item.cliente);
-								solicitudes.push('asociaciones/'+item.asociacion);								
+								solicitudes.push('clientes/'+item.cliente+'/');																
 							}
 
 							if(solicitudes.indexOf('clientes/'+item.cliente) < 0){
-								solicitudes.push('clientes/'+item.cliente);
-							}
-
-							if(solicitudes.indexOf('asociaciones/'+item.asociacion) < 0){
-								solicitudes.push('asociaciones/'+item.asociacion);
+								solicitudes.push('clientes/'+item.cliente+'/');
 							}							
 						});
 
 						var peticiones = solicitudes.map(function (item) {
-							return $http.get(baseUrl+item);
+							var requirement = getRequirements(baseUrl+item, 'GET');
+							return $http(requirement);
 						});						
 
 						return $q.all(peticiones)
 							.then(function (alldata) {
 								data.forEach(function (item) {
-									for(var i = 0; i < alldata.length; i++){
-										if(alldata[i].config.url.indexOf('clientes') > -1) {
-											if(item.cliente === alldata[i].data.id) {
-												item.cliente = alldata[i].data;
-												break;
-											}
-										}										
-									}
-
 									for(var i = 0; i < alldata.length; i++){										
-										if(alldata[i].config.url.indexOf('asociaciones') > -1){
-											if(item.asociacion === alldata[i].data.id) {
-												item.asociacion = alldata[i].data;
-												break;
-											}
-										}
-									}
+										if(item.cliente === alldata[i].data.id) {
+											item.cliente = alldata[i].data;
+											break;
+										}										
+									}									
 								});								
 								return data;
 							});						
@@ -205,18 +258,20 @@
 				var deferred = $q.defer();
 
 				var promesaVenta = $q(function (resolve, reject) {
-					$http.post(baseUrl+'ventas/', {
+					var requirement = getRequirements(baseUrl+'ventas/', 'POST', {
 						fecha: formatFecha(venta.fecha),
 						valor_total: venta.valor_total,
 						cliente: venta.cliente.id,
 						asociacion: venta.asociacion.id
-					})
-					.success(function (data) {
-						resolve(data);
-					})
-					.error(function (error) {						
-						reject(error);
 					});
+
+					$http(requirement)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {						
+							reject(error);
+						});
 				});
 
 				var promesaDetalles = promesaVenta
@@ -224,22 +279,27 @@
 						venta.detalles.forEach(function (detalle) {
 							detalle.venta = data.id;
 							detalle.producto = detalle.inventario.producto.id;
-							$http.post(baseUrl+'detallesventa/', detalle)
+							var requirementDetalle = getRequirements(baseUrl+'detallesventa/', 'POST', detalle);
+							$http(requirementDetalle)
 								.success(function (_detalle) {
 									detalle.usos.forEach(function (uso) {
 										uso.enfermedad = uso.enfermedad.id;
 										uso.especie = uso.especie.id;
 										uso.detalle_venta = _detalle.id;
-										$http.post(baseUrl+'usosventa/', uso);
+										var requirementUso = getRequirements(baseUrl+'usosventa/', 'POST', uso);
+										$http(requirementUso);
 									});
 
-									$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+venta.asociacion.id)
+
+									var requirementInventario = getRequirements(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+venta.asociacion.id, 'GET');
+									$http(requirementInventario)
 										.success(function (data) {
 											if(data.length) {
 												var inventario = data[0];
 												inventario.cantidad = parseFloat(inventario.cantidad) - parseFloat(detalle.cantidad);
 												//inventario.valor_unitario = parseFloat(detalle.precio_unitario);
-												$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
+												var requirementInventario = getRequirements(baseUrl+'inventarios/'+inventario.id+'/', 'PUT', inventario);
+												$http(requirementInventario);
 											}else{
 												inventario = {
 													cantidad: -detalle.cantidad,
@@ -247,7 +307,8 @@
 													producto: detalle.producto,
 													asociacion: venta.asociacion.id
 												}
-												$http.post(baseUrl+'inventarios/', inventario);
+												var requirementInventario = getRequirements(baseUrl+'inventarios/'+inventario.id+'/', 'POST', inventario);
+												$http(requirementInventario);
 											}
 										});
 
@@ -265,10 +326,13 @@
 											if(igual){
 												var caducidadbase = fechas[i];
 												caducidadbase.cantidad = parseFloat(caducidadbase.cantidad) - parseFloat(caducidad.cantidad);
-												if(caducidadbase.cantidad > 0) 
-													$http.put(baseUrl+'caducidad/'+caducidadbase.id+'/', caducidadbase);
+												var requirementCaducidad;
+												if(caducidadbase.cantidad > 0)
+													requirementCaducidad = getRequirements(baseUrl+'caducidad/'+caducidadbase.id+'/', 'PUT', caducidadbase); 													
 												else
-													$http.delete(baseUrl+'caducidad/'+caducidadbase.id+'/');											
+													requirementCaducidad = getRequirements(baseUrl+'caducidad/'+caducidadbase.id+'/', 'DELETE');
+
+												$http(requirementCaducidad);
 											}
 										}																			
 									});									
@@ -298,63 +362,45 @@
 			}			
 		}])
 		.factory('asociacionService', ['$http', '$q',function ($http, $q) {
-			function getAsociacionPorId (id) {
-				var deferred = $q.defer();
-
-				$http.get(asociacionUrl+id)
-					.success(function (data) {						
-						data.tecnico = JSON.parse(data.tecnico);
-						data.ubicacion = JSON.parse(data.ubicacion);												
-						deferred.resolve(data);						
-					});
-
-				return deferred.promise;
+			
+			function getAsociacionesTodos () {				
+				return $q(function (resolve, reject) {
+					if(user.asociaciones)
+						resolve(user.asociaciones);					
+					else
+						reject();					
+				});				
 			}
 
-			function getAsociacionesTodos () {
-				var deferred = $q.defer();
-
-				$http.get(asociacionUrl)
-					.success(function (data) {
-						data.every(function (asociacion) {
-							asociacion.tecnico = JSON.parse(asociacion.tecnico);
-							asociacion.ubicacion = JSON.parse(asociacion.ubicacion);						
+			function getAsociaciones () {
+				return $q(function (resolve, reject) {
+					var requirement = getRequirements(baseUrl+'asociaciones/', 'GET');
+					$http(requirement)
+						.success(function (data) {
+							data.every(function (item) {
+								item.tecnico = JSON.parse(item.tecnico);
+								item.ubicacion = JSON.parse(item.ubicacion);
+							});
+							resolve(data);
+						})
+						.error(function (error) {
+							reject(error);
 						});
+				});
+			}			
 
-						deferred.resolve(data);						
-					});
-
-				return deferred.promise;
-			}
-
-			function getAsociacionesPorTecnico (tecnico) {
-				var deferred = $q.defer();
-
-				$http.get(asociacionUrl+'?tecnico='+tecnico)
-					.success(function (data) {
-						data.every(function (asociacion) {
-							asociacion.tecnico = JSON.parse(asociacion.tecnico);
-							asociacion.ubicacion = JSON.parse(asociacion.ubicacion);						
-						});
-
-						deferred.resolve(data);						
-					});
-
-				return deferred.promise;
-			}
-
-			return {
-				getPorId : getAsociacionPorId,
-				getTodos : getAsociacionesTodos,
-				getPorTecnico : getAsociacionesPorTecnico 
+			return {				
+				getTodos : getAsociacionesTodos,	
+				getAsociaciones: getAsociaciones			
 			}
 		}])
 		.factory('enfermedadService', ['$http', '$q', function ($http, $q) {
 
 			function getEnfermedadesTodos () { 
 				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'enfermedades/', 'GET');
 
-				$http.get(enfermedadUrl)
+				$http(requirement)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -370,8 +416,9 @@
 
 			function getEspeciesTodos () { 
 				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'especies/', 'GET');
 
-				$http.get(especieUrl)
+				$http(requirement)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -387,40 +434,9 @@
 
 			function getClientesPorId (id) {
 				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'clientes/'+id+'/', 'GET');
 
-				$http.get(clienteUrl+id)
-					.success(function (data) {
-						deferred.resolve(data);
-					});
-
-				return deferred.promise;
-			}
-
-			function getClientePorCedula(cedula) {
-				var deferred = $q.defer();
-					$http.get(baseUrl+'clientes/?filtro='+cedula)
-						.success(function (data) {
-							if(data.length > 0) deferred.resolve(data[0]);
-							else deferred.resolve(null);
-						});
-				return deferred.promise;
-			}
-			
-			function getClientesTodos () {
-				var deferred = $q.defer();
-
-				$http.get(clienteUrl)
-					.success(function (data) {
-						deferred.resolve(data);
-					});
-
-				return deferred.promise;
-			}
-
-			function crearCliente(cliente) {
-				var deferred = $q.defer();
-
-				$http.post(baseUrl+'clientes/', cliente)
+				$http(requirement)
 					.success(function (data) {
 						deferred.resolve(data);
 					})
@@ -431,10 +447,52 @@
 				return deferred.promise;
 			}
 
-			function editarCliente(cliente) {
+			function getClientePorCedula(cedula) {
 				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'clientes/?filtro='+cedula, 'GET');
+					$http(requirement)
+						.success(function (data) {
+							if(data.length) deferred.resolve(data[0]);
+							else deferred.resolve(null);
+						});
+				return deferred.promise;
+			}
+			
+			function getClientesTodos () {
+				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'clientes/', 'GET')
 
-				$http.put(baseUrl+'clientes/'+cliente.id+'/', cliente)
+				$http(requirement)
+					.success(function (data) {
+						deferred.resolve(data);
+					})
+					.error(function (error) {
+						deferred.reject(error);
+					});
+
+				return deferred.promise;
+			}
+
+			function crearCliente(cliente) {
+				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'clientes/', 'POST', cliente);
+
+				$http(requirement)
+					.success(function (data) {
+						deferred.resolve(data);
+					})
+					.error(function (error) {
+						deferred.reject(error);
+					});
+
+				return deferred.promise;
+			}
+
+			function editarCliente(cliente) {				
+				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'clientes/'+cliente.id+'/', 'PUT', cliente);
+
+				$http(requirement)
 					.success(function (data) {
 						deferred.resolve(data);
 					})
@@ -457,8 +515,9 @@
 
 			function getProductosTodos () {
 				var deferred = $q.defer();
+				var requirement = getRequirements(baseUrl+'productos/', 'GET');
 
-				$http.get(productoUrl)
+				$http(requirement)
 					.success(function (data) {
 						deferred.resolve(data);
 					});
@@ -475,7 +534,8 @@
 				var deferred = $q.defer();
 
 				var promesaCompra = $q(function (resolve, reject) {
-					$http.get(baseUrl+'compras/'+id)
+					var requirement = getRequirements(baseUrl+'compras/'+id+'/', 'GET');
+					$http(requirement)
 						.success(function (data) {
 							resolve(data);
 						})
@@ -483,26 +543,13 @@
 							reject(error);
 						});
 				});
-
-				var promesaAsociacion = promesaCompra
-					.then(function (data) {						
-						return $q(function (resolve, reject) {
-							$http.get(baseUrl+'asociaciones/'+data.asociacion)
-								.success(function (asociacion) {
-									data.asociacion = asociacion;
-									resolve(data);
-								})
-								.error(function (error) {
-									reject(error);
-								});							
-						});
-					});
 						
-				var promesaProductos = promesaAsociacion
+				var promesaProductos = promesaCompra
 					.then(function (data) {						
 						var detalles = data.detalles;
 						var peticiones = detalles.map(function (detalle) {
-							return $http.get(baseUrl+'productos/'+detalle.producto);
+							var requirement = getRequirements(baseUrl+'productos/'+detalle.producto+'/', 'GET');
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones)
@@ -531,48 +578,17 @@
 				var deferred = $q.defer();
 
 				var promesa = $q(function (resolve, reject) {
-					$http.get(baseUrl+'compras/?asociacion='+asociacion)
+					var requirement = getRequirements(baseUrl+'compras/?asociacion='+asociacion, 'GET');
+					$http(requirement)
 						.success(function (data) {						
 							resolve(data);
 						})
 						.error(function (error) {
 							reject(error);
 						});	
-				});
+				});				
 
-				var promesaAsociacion = promesa
-					.then(function (data) {						
-						var solicitudes = [];
-
-						data.forEach(function (item) {
-							if(solicitudes.length === 0) {								
-								solicitudes.push('asociaciones/'+item.asociacion);								
-							}
-
-							if(solicitudes.indexOf('asociaciones/'+item.asociacion) < 0){
-								solicitudes.push('asociaciones/'+item.asociacion);
-							}							
-						});						
-
-						var peticiones = solicitudes.map(function (item) {
-							return $http.get(baseUrl+item);
-						});						
-
-						return $q.all(peticiones)
-							.then(function (alldata) {
-								data.forEach(function (item) {								
-									for(var i = 0; i < alldata.length; i++){																				
-										if(item.asociacion === alldata[i].data.id) {
-											item.asociacion = alldata[i].data;
-											break;
-										}										
-									}
-								});								
-								return data;
-							});						
-					});
-
-				promesaAsociacion
+				promesa
 					.then(function (data) {
 						deferred.resolve(data);
 					});
@@ -592,17 +608,19 @@
 				var deferred = $q.defer();
 
 				var promesaCompra = $q(function (resolve, reject) {
-					$http.post(baseUrl+'compras/', {
+					var requirement = getRequirements(baseUrl+'compras/', 'POST', {
 						fecha: formatFecha(compra.fecha),
 						valor_total: compra.valor_total,						
 						asociacion: compra.asociacion.id
-					})
-					.success(function (data) {
-						resolve(data);
-					})
-					.error(function (error) {						
-						reject(error);
 					});
+
+					$http(requirement)
+						.success(function (data) {
+							resolve(data);
+						})
+						.error(function (error) {						
+							reject(error);
+						});
 				});
 
 				var promesaDetalles = promesaCompra
@@ -610,15 +628,17 @@
 						compra.detalles.forEach(function (detalle) {
 							detalle.compra = data.id;
 							detalle.producto = detalle.producto.id;
-							$http.post(baseUrl+'detallescompra/', detalle)
+							var requirementDetalle = getRequirements(baseUrl+'detallescompra/', 'POST', detalle);
+							$http(requirementDetalle)
 								.success(function (_detalle) {	
-									$http.get(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id)
-										.success(function (data) {
+									var requirementInventario = getRequirements(baseUrl+'inventarios/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id, 'GET');
+									$http(requirementInventario)
+										.success(function (data) {											
 											if(data.length) {
 												var inventario = data[0];
 												inventario.cantidad = parseFloat(inventario.cantidad) + parseFloat(detalle.cantidad);
 												inventario.valor_unitario = parseFloat(detalle.costo_unitario);
-												$http.put(baseUrl+'inventarios/'+inventario.id+'/', inventario);
+												requirementInventario = getRequirements(baseUrl+'inventarios/'+inventario.id+'/', 'PUT', inventario);												
 											}else{
 												inventario = {
 													cantidad: detalle.cantidad,
@@ -626,12 +646,13 @@
 													producto: detalle.producto,
 													asociacion: compra.asociacion.id											
 												}
-												$http.post(baseUrl+'inventarios/', inventario);
+												requirementInventario = getRequirements(baseUrl+'inventarios/', 'POST', inventario);												
 											}
+											$http(requirementInventario);
 										});
 
-								
-									$http.get(baseUrl+'caducidad/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id)
+									var requirementCaducidad = getRequirements(baseUrl+'caducidad/?producto='+detalle.producto+'&asociacion='+compra.asociacion.id, 'GET');
+									$http(requirementCaducidad)
 										.success(function (data) {
 											for(var i = 0; i < detalle.caducidad.length; i++) {
 												var caducidadcliente = detalle.caducidad[i];
@@ -648,12 +669,13 @@
 											detalle.caducidad.forEach(function (caducidad) {
 												caducidad.fecha = formatFecha(caducidad.fecha);
 												caducidad.producto = detalle.producto;
-												caducidad.asociacion = compra.asociacion.id;
+												caducidad.asociacion = compra.asociacion.id;												
 												if(caducidad.id) {
-													$http.put(baseUrl+'caducidad/'+caducidad.id+'/', caducidad);
+													requirementCaducidad = getRequirements(baseUrl+'caducidad/'+caducidad.id+'/', 'PUT',caducidad);													
 												}else{
-													$http.post(baseUrl+'caducidad/', caducidad);
+													requirementCaducidad = getRequirements(baseUrl+'caducidad/', 'POST',caducidad);
 												}
+												$http(requirementCaducidad);
 											});
 										});
 								});
@@ -679,11 +701,12 @@
 		.factory('inventarioService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
 			function getInventarioPorAsociacionProducto(asociacion, producto) {
 				var deferred = $q.defer();
-				
-				$http.get(baseUrl+'inventarios/?asociacion='+asociacion+'&producto='+producto)
+				var requirement = getRequirements(baseUrl+'inventarios/?asociacion='+asociacion+'&producto='+producto, 'GET');
+
+				$http(requirement)
 					.success(function (inventarios) {
 						var inventario = {};
-						if(inventarios.length>0){
+						if(inventarios.length){
 							inventario = inventarios[0];
 						}
 						
@@ -694,10 +717,11 @@
 			}
 
 			function getInventarioTodos(asociacion) {
-				var deferred = $q.defer();
+				var deferred = $q.defer();				
 
 				var promesaInventario = $q(function (resolve, reject) {
-					$http.get(baseUrl+'inventarios/?asociacion'+asociacion)
+					var requirement = getRequirements(baseUrl+'inventarios/?asociacion'+asociacion, 'GET');
+					$http(requirement)
 						.success(function (data) {
 							resolve(data);
 						})
@@ -709,7 +733,8 @@
 				var promesaProductos = promesaInventario
 					.then(function (data) {
 						var peticiones = data.map(function (inventario) {
-							return $http.get(baseUrl+'productos/'+inventario.producto);
+							var requirement = getRequirements(baseUrl+'productos/'+inventario.producto+'/', 'GET');
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones)
@@ -729,7 +754,8 @@
 				var promesaCaducidad = promesaProductos
 					.then(function (data) {
 						var peticiones = data.map(function (inventario) {
-							return $http.get(baseUrl+'caducidad/?producto='+inventario.producto.id+'&asociacion='+asociacion);
+							var requirement = getRequirements(baseUrl+'caducidad/?producto='+inventario.producto.id+'&asociacion='+asociacion, 'GET');
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones)
@@ -768,7 +794,8 @@
 				inventario.producto = inventario.producto.id;
 
 				var promesaInventario = $q(function (resolve, reject) {
-					$http.post(baseUrl+'inventarios/', inventario)
+					var requirement = getRequirements(baseUrl+'inventarios/', 'POST', inventario);
+					$http(requirement)
 						.success(function (data) {
 							resolve(data);
 						})
@@ -779,13 +806,14 @@
 
 				var promesaCaducidad = promesaInventario
 					.then(function (data) {
-						var peticiones = inventario.caducidad.map(function (item) {							
-							return $http.post(baseUrl+'caducidad/', {
+						var peticiones = inventario.caducidad.map(function (item) {	
+							var requirement = getRequirements(baseUrl+'caducidad/', 'POST', {
 								fecha: formatFecha(item.fecha),
 								cantidad: item.cantidad,
 								producto: data.producto,
 								asociacion: data.asociacion
-							});
+							});						
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones);
@@ -798,38 +826,7 @@
 
 				return deferred.promise;		
 			}
-
-			function editarInventario (inventario, kardex) {
-				var deferred = $q.defer();				
-				inventario.cantidad = parseFloat(inventario.cantidad);
-				kardex.cantidad = parseFloat(kardex.cantidad);
-
-				var _cantidad = kardex.tipo_transaccion == 1?
-					inventario.cantidad + kardex.cantidad:inventario.cantidad - kardex.cantidad;								
-
-				$http.put(baseUrl+'inventarios/'+inventario.id+'/', {
-					cantidad: _cantidad,
-					valor_unitario: kardex.valor_unitario,					
-					producto: kardex.producto.id,
-					asociacion: kardex.asociacion
-				}).success(function (inventario) {
-					$http.post(baseUrl+'kardexs/', {
-						fecha: formatFecha(kardex.fecha),
-						tipo_transaccion: kardex.tipo_transaccion,
-						descripcion: kardex.transaccion + ' - ' + kardex.descripcion,
-						cantidad: kardex.cantidad,
-						valor_unitario: kardex.valor_unitario,
-						saldo: _cantidad,
-						producto: kardex.producto.id,
-						asociacion: kardex.asociacion
-					}).success(function () {
-						deferred.resolve();
-					});
-				});
-
-				return deferred.promise;	
-			}
-
+			
 			function getAsociaciones () {
 				return asociacionService.getTodos();	
 			}
@@ -845,8 +842,7 @@
 				getAsociaciones: getAsociaciones,
 				getPorAsociacionProducto: getInventarioPorAsociacionProducto,				
 				getTodos: getInventarioTodos,
-				crear: crearInventario,
-				editar: editarInventario
+				crear: crearInventario				
 			}
 		}])
 		.factory('reporteService', ['$http', '$q', 'asociacionService', function ($http, $q, asociacionService) {
@@ -895,7 +891,7 @@
 			}
 
 			function getAsociaciones () {
-				return asociacionService.getTodos();
+				return asociacionService.getAsociaciones();
 			}			
 
 			function getVentasMensuales(mes, asociacion) {
@@ -903,10 +899,12 @@
 				var detalles = [];
 				var peticiones = [];
 
-				$http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes)
+				var requirement = getRequirements(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes, 'GET');
+				$http(requirement)
 					.success(function (data) {												
 						if(data.length > 0) {
-							peticiones.push($http.get(baseUrl+'productos/'+data[0].producto));
+							var requirementProducto = getRequirements(baseUrl+'productos/'+data[0].producto+'/', 'GET');
+							peticiones.push($http(requirementProducto));
 							detalles.push({
 								cantidad : parseFloat(data[0].cantidad),
 								producto : data[0].producto,
@@ -926,13 +924,14 @@
 								}
 							}
 							if(!encontrado) {
-								peticiones.push($http.get(baseUrl+'productos/'+data[i].producto));
+								var requirementProducto = getRequirements(baseUrl+'productos/'+data[i].producto+'/', 'GET');
+								peticiones.push($http(requirementProducto));
 								detalles.push({
-								cantidad : parseFloat(data[i].cantidad),
-								producto : data[i].producto,
-								precio_unitario : parseFloat(data[i].precio_unitario),
-								precio_total : parseFloat(data[i].precio_total)
-							});
+									cantidad : parseFloat(data[i].cantidad),
+									producto : data[i].producto,
+									precio_unitario : parseFloat(data[i].precio_unitario),
+									precio_total : parseFloat(data[i].precio_total)
+								});
 							}
 						}
 
@@ -959,7 +958,8 @@
 
 
 				var promesaInventario = $q(function (resolve, reject) {
-					$http.get(baseUrl+'inventarios/?inicial=true&asociacion='+asociacion)
+					var requirement = getRequirements(baseUrl+'inventarios/?inicial=true&asociacion='+asociacion, 'GET');
+					$http(requirement)
 						.success(function (data) {
 							resolve(data);
 						})
@@ -976,7 +976,8 @@
 								producto: inventario.producto,
 								cantidad_magap: inventario.cantidad_inicial
 							});
-							return $http.get(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes+'&producto='+inventario.producto);
+							var requirement = getRequirements(baseUrl+'detallesventa/?asociacion='+asociacion+'&mes='+mes+'&producto='+inventario.producto, 'GET');
+							return $http(requirement);
 						});						
 						
 						return $q.all(peticiones)
@@ -1007,7 +1008,8 @@
 				var promesaProductos = promesaTotales
 					.then(function (data) {
 						var peticiones = reportes.map(function (reporte) {
-							return $http.get(baseUrl+'productos/'+reporte.producto);
+							var requirement = getRequirements(baseUrl+'productos/'+reporte.producto+'/', 'GET');
+							return $http(requirement);
 						});
 
 						return $q.all(peticiones)
@@ -1038,7 +1040,6 @@
 
 				getAsociaciones()
 					.then(function (asociaciones) {
-
 						asociaciones.forEach(function (asociacion) {
 							getVentasMensuales(mes, asociacion.id)
 								.then(function (detalles) {

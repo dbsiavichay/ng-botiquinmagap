@@ -1,21 +1,78 @@
 (function() {	
 	angular.module('botiquin.controllers', [])
-		.controller('LoginController', ['$scope', function ($scope) {
+		.controller('NavController', ['$scope','$rootScope', '$location', 'userService',function ($scope, $rootScope, $location, userService) {
+			$scope.user = '';
+			$scope.reportes = false;
+			$scope.opciones = false;
+			$rootScope.$watch('user', function (newValue, oldValue) {				
+				$scope.user = newValue;
+				if(!newValue) return;				
+				if($scope.user.groups.toString().toLowerCase().indexOf('directivo') > -1) $scope.reportes = true;
+				if($scope.user.groups.toString().toLowerCase().indexOf('tecnico') > -1) $scope.opciones = true;
+				if($scope.opciones) $location.path('/asociaciones');
+				else $location.path('/reportecomercial')
+			});
 
-		}])
-		.controller('AsociacionController',['$scope', '$http',function ($scope, $http){
-			$http.get('http://localhost:8000/asociaciones/?tecnico=2')
-				.success(function (data) {
-					$scope.asociaciones = data;
-					$scope.asociaciones.every(function(element, index, array){
-						element.tecnico = JSON.parse(element.tecnico);
-						element.ubicacion = JSON.parse(element.ubicacion);
-						element.map = new Image();
-						element.map.src = 'http://maps.googleapis.com/maps/api/staticmap?center='
-							+element.latitud+','+element.longitud+'&zoom=17&size=300x200&maptype=hybrid&'
-							+'&markers=size:mid|color:blue|label:A|'+element.latitud+','+element.longitud
-							+'&sensor=false';
+			$rootScope.$watch(function () { return $location.path()}, function (newValue, oldValue) {
+				if(!$rootScope.user) {
+					$location.path('/');
+					return;
+				}
+
+				if(!$scope.opciones) {
+					var path = $location.path();
+					if(path.indexOf('comercial') < 0 || path.indexOf('kardex') < 0
+							|| path.indexOf('general') < 0) {
+						$location.path('/reportecomercial');		
+					}
+				}				
+			});
+
+			$scope.desabilitar = function($event) {
+				$event.preventDefault();
+			}
+
+			$scope.logout = function () {
+				userService.logout()
+					.then(function (data) {
+						$rootScope.user = '';
+						$scope.reportes = false;
+						$scope.opciones = false;
+						$location.path('/');
 					});
+			}
+		}])
+		.controller('LoginController', ['$scope','$rootScope','userService',function ($scope, $rootScope,userService) {
+			$scope.error = false;
+			$scope.mensajeError = '';
+			$scope.user = {}
+
+			$scope.ingresar = function () {				
+				$scope.error = false;
+				userService.login($scope.user)
+					.then(function (data) {
+						if(data.asociaciones.length) {
+							if(data.groups.toString().toLowerCase().indexOf('directivo') < 0) {
+								$scope.error = true;
+							  $scope.mensajeError = 'Este usuario no tiene asociaciones a su cargo.'
+							  return;								
+							}
+						}	
+						$rootScope.user = data;						
+					}, function (error) {						
+						$scope.error = true;
+						$scope.mensajeError = 'Usuario o contraseña incorrectos.'
+					});
+			}
+		}])
+		.controller('AsociacionController',['$scope', '$rootScope', function ($scope, $rootScope){			
+				$scope.asociaciones = $rootScope.user.asociaciones;
+				$scope.asociaciones.every(function(element){
+					element.map = new Image();
+					element.map.src = 'http://maps.googleapis.com/maps/api/staticmap?center='
+						+element.latitud+','+element.longitud+'&zoom=17&size=300x200&maptype=hybrid&'
+						+'&markers=size:mid|color:blue|label:A|'+element.latitud+','+element.longitud
+						+'&sensor=false';
 				});
 		}])
 		.controller('VentasController', ['$scope', '$modal', 'ventaService', function ($scope, $modal, ventaService) {			
@@ -46,13 +103,16 @@
 					size: 'lg',
 					resolve: {
 						data: function () {							
-							return $scope.ventas[$index].id;
+							return {
+								id: $scope.ventas[$index].id,
+								asociacion: $scope.asociacionSelected
+							}
 						}
 					}
 				});
 			}			
 		}])
-		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams','asociacionService', 'ventaService', function ($scope, $location, $modal, $routeParams, asociacionService, ventaService) {						
+		.controller('VentaController', ['$scope', '$location', '$modal', '$routeParams', 'ventaService', function ($scope, $location, $modal, $routeParams, ventaService) {						
 			var idVenta = parseInt($routeParams.id);
 
 			//Declaracion de variables
@@ -63,23 +123,11 @@
 			$scope.venta.detalles = [];
 			$scope.venta.fecha = new Date();								
 
-			//Acciones constructoras
-			if(!isNaN(idVenta)){				
-				ventaService.getPorId(idVenta)
-					.then(function (data) {
-						var fecha = data.fecha;
-						data.fecha = new Date(fecha);
-						data.fecha.setDate(fecha.split('-')[2]);
-						$scope.venta = data;										
-					});
-			}
-
-			asociacionService.getPorTecnico(2)
+			ventaService.getAsociaciones()
 				.then(function (data) {
 					$scope.asociaciones = data;					
 				});
-			
-			
+						
 			//Funciones	
 			$scope.cancelEnter = function($event) {
 				if($event.keyCode === 13) $event.preventDefault();
@@ -264,13 +312,6 @@
 				});
 			}
 
-			$scope.seleccionarFecha = function ($event) {
-				console.log($scope.venta.fecha.getTime());
-				$event.preventDefault;
-				$event.stopPropagation();
-				$scope.venta.fechaPopup = true;				
-			}		
-
 			function validarDatos () {
 				$scope.error = false;
 				if(!$scope.venta.asociacion) $scope.error = true;
@@ -335,10 +376,11 @@
 			}
 		}])
 		.controller('ModalVentaController', ['$scope', '$modalInstance', 'ventaService', 'data', function ($scope, $modalInstance, ventaService, data) {
-			var id = data;
+			var id = data.id;
 			ventaService.getPorId(id)
-				.then(function (data) {
-					$scope.venta = data;					
+				.then(function (venta) {
+					$scope.venta = venta;					
+					$scope.venta.asociacion = data.asociacion;
 				});
 
 			$scope.cancelar = function () {			
@@ -538,6 +580,16 @@
 			$scope.mensajeError = '';
 			$scope.empty = true;
 
+			productoService.getTodos()
+				.then(function (data) {
+					dataList = data;
+					$scope.productos = data;
+					if(data.length>0){
+						$scope.empty = false;
+					}
+				});					
+
+
 			var contains = function (str, searchString) {
 				return str.toLowerCase().indexOf(searchString.toLowerCase()) > -1;
 			};
@@ -558,18 +610,7 @@
 				if($scope.productos.length > 0){
 					$scope.empty = false;
 				}
-			}			
-						
-
-			productoService.getTodos()
-				.then(function (data) {
-					dataList = data;
-					$scope.productos = data;
-					if(data.length>0){
-						$scope.empty = false;
-					}
-				});					
-
+			}						
 
 			$scope.filtrarProductos = function (event) {						
 				if(!event){
@@ -710,7 +751,10 @@
 					size: 'lg',
 					resolve: {
 						data: function () {							
-							return $scope.compras[$index].id;
+							return {
+								id: $scope.compras[$index].id,
+								asociacion: $scope.asociacionSelected
+							}
 						}
 					}
 				});
@@ -725,15 +769,6 @@
 			$scope.compra.fecha = new Date();			
 			$scope.error = false;
 			$scope.mensajeError = '';
-
-			if(!isNaN(idCompra)){
-				compraService.getPorId(idCompra)
-					.then(function (data) {
-						var fecha = data.compra.fecha;
-						data.compra.fecha = new Date(fecha);
-						data.compra.fecha.setDate(fecha.split('-')[2]);
-					});
-			}
 
 			compraService.getAsociaciones()
 				.then(function (data) {
@@ -905,10 +940,11 @@
 			}
 		}])
 		.controller('ModalCompraController', ['$scope', '$modalInstance', 'compraService', 'data', function ($scope, $modalInstance, compraService, data) {
-			var id = data;
+			var id = data.id;
 			compraService.getPorId(id)
-				.then(function (data) {
-					$scope.compra = data;					
+				.then(function (compra) {
+					$scope.compra = compra;					
+					$scope.compra.asociacion = data.asociacion;
 				});
 
 			$scope.cancelar = function () {			
@@ -1121,7 +1157,7 @@
 			$scope.caducidad = {};
 			$scope.caducidades = data.caducidades;			
 			$scope.fechas = data.fechas;			
-			$scope.error = false;			
+			$scope.error = false;				
 			
 			$scope.agregarCaducidad = function () {				
 				$scope.error = false;
@@ -1136,19 +1172,24 @@
 				}
 
 				if($scope.fechas) {
+					var existe = false;
 					for(var i = 0; i < $scope.fechas.length; i++) {					
 						var fecha = new Date($scope.fechas[i].fecha);
-						fecha.setDate($scope.fechas[i].fecha.split('-')[2]);
+						fecha.setDate($scope.fechas[i].fecha.split('-')[2]);			
 
-						if($scope.caducidad.fecha.getDate() != fecha.getDate()) $scope.error = true;
-						if($scope.caducidad.fecha.getMonth() != fecha.getMonth()) $scope.error = true;
-						if($scope.caducidad.fecha.getFullYear() != fecha.getFullYear()) $scope.error = true;
+						if($scope.caducidad.fecha.getDate() === fecha.getDate()
+							&& $scope.caducidad.fecha.getMonth() === fecha.getMonth()
+							&& $scope.caducidad.fecha.getFullYear() === fecha.getFullYear()){
+							existe = true;
+							break;
+						}
+					}
 
-						if($scope.error){
+					if(!existe){
+							$scope.error = true;
 							$scope.mensajeError = 'No existe items en el inventario con la fecha de caducidad ingresada';
 							return;
-						}
-					}					
+						}					
 				}
 							
 				$scope.caducidades.push($scope.caducidad);
