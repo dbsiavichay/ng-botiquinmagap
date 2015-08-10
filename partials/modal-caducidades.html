@@ -13,7 +13,9 @@
 			<input ng-model="caducidad.cantidad" type="text" class="form-control" placeholder="Cantidad">
 		</div>	
 		<div class="col-xs-6 input-inline">
-      <input ng-model="caducidad.fecha" class="form-control" type="date" placeholder="Fecha de caducidad">
+      <input ng-if="fechas.length < 0" ng-model="caducidad.fecha" class="form-control" type="date" placeholder="Fecha de caducidad">
+      <select ng-if="fechas.length" ng-options="caduc.fecha for caduc in fechas track by caduc.id" ng-model="caducidad.fecha" class="form-control">			    		
+			</select>
     </div>
 		<div class="col-xs-1 input-inline">							
 			<button ng-click="agregarCaducidad()" class="btn btn-success">
