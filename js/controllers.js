@@ -297,7 +297,7 @@
 				}
 
 				$modal.open({
-					templateUrl: 'partials/modal-caducidad.html',
+					templateUrl: 'partials/modal-caducidades.html',
 					controller: 'ModalCaducidadController',
 					resolve: {
 						data : function () {
@@ -1157,7 +1157,7 @@
 			$scope.caducidad = {};
 			$scope.caducidades = data.caducidades;			
 			$scope.fechas = data.fechas;			
-			$scope.error = false;				
+			$scope.error = false;			
 			
 			$scope.agregarCaducidad = function () {				
 				$scope.error = false;
